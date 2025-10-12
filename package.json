@@ -1,13 +1,13 @@
 {
-  "name": "ds-toolkit",
+  "name": "datly",
   "version": "0.0.1",
   "description": "",
   "license": "ISC",
   "author": "Vinícis Barreto",
   "type": "module",
-  "main": "dist/ds-toolkit.umd.js",
+  "main": "dist/datly.umd.js",
   "scripts": {
-    "build": "microbundle build --entry src/index.js --output dist/ds-toolkit.js --name DSToolkit --format umd --compress --no-sourcemap",
+    "build": "microbundle build --entry src/index.js --output dist/datly.js --name datly --format umd --compress --no-sourcemap",
     "prepublishOnly": "npm run build"
   },
   "devDependencies": {

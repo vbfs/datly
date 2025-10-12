@@ -17,7 +17,7 @@ import AutoAnalyzer from "./insights/autoAnalyser.js";
 import MachineLearning from "./ml/machineLearning.js";
 import DataViz from "./dataviz/index.js";
 
-class DSToolkit {
+class Datly {
   constructor() {
     this.dataLoader = new DataLoader();
     this.validator = new Validator();
@@ -465,4 +465,4 @@ class DSToolkit {
 
 }
 
-export default DSToolkit;
+export default Datly;
