@@ -1,0 +1,19 @@
+{
+  "name": "ds-toolkit",
+  "version": "0.0.1",
+  "description": "",
+  "license": "ISC",
+  "author": "Vinícis Barreto",
+  "type": "module",
+  "main": "dist/ds-toolkit.umd.js",
+  "scripts": {
+    "build": "microbundle build --entry src/index.js --output dist/ds-toolkit.js --name DSToolkit --format umd --compress --no-sourcemap",
+    "prepublishOnly": "npm run build"
+  },
+  "devDependencies": {
+    "microbundle": "^0.15.1"
+  },
+  "dependencies": {
+    "d3": "^7.9.0"
+  }
+}
