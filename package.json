@@ -29,11 +29,19 @@
     "url": "https://github.com/vbfs/datly/issues"
   },
   "type": "module",
-  "main": "dist/datly.umd.js",
+  "main": "dist/datly.cjs",
+  "module": "dist/datly.mjs",
   "unpkg": "dist/datly.umd.js",
+  "exports": {
+    ".": {
+      "import": "./dist/datly.mjs",
+      "require": "./dist/datly.cjs",
+      "default": "./dist/datly.umd.js"
+    }
+  },
   "scripts": {
-    "build": "microbundle build --entry src/index.js --output dist/datly.umd.js --name Datly --format umd --compress --no-sourcemap --external none",
-    "dev": "microbundle watch --entry src/index.js --output dist/datly.umd.js --name Datly --format umd --external none",
+    "build": "microbundle --entry src/index.js --format modern,esm,cjs,umd --name Datly --compress --no-sourcemap --external none",
+    "dev": "microbundle watch --entry src/index.js --format modern,esm,cjs,umd --name Datly --external none",
     "prepublishOnly": "npm run build"
   },
   "devDependencies": {
@@ -46,5 +54,11 @@
     "d3-shape": "^3.2.0",
     "d3-interpolate": "^3.0.1"
   },
-  "dependencies": {}
+  "dependencies": {},
+  "files": [
+    "dist",
+    "src",
+    "README.md",
+    "LICENSE"
+  ]
 }
