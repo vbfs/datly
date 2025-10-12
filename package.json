@@ -1,19 +1,50 @@
 {
   "name": "datly",
   "version": "0.0.1",
-  "description": "",
-  "license": "ISC",
-  "author": "Vinícis Barreto",
+  "description": "A JavaScript toolkit for data science, statistics, and machine learning in the browser or Node.js.",
+  "keywords": [
+    "data-science",
+    "statistics",
+    "machine-learning",
+    "analytics",
+    "math",
+    "d3",
+    "data-visualization",
+    "toolkit",
+    "library",
+    "js"
+  ],
+  "license": "MIT",
+  "author": {
+    "name": "Vinícius Barreto",
+    "email": "vinicius@example.com",
+    "url": "https://github.com/vbfs"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/vbfs/datly"
+  },
+  "homepage": "https://github.com/vbfs/datly#readme",
+  "bugs": {
+    "url": "https://github.com/vbfs/datly/issues"
+  },
   "type": "module",
   "main": "dist/datly.umd.js",
+  "unpkg": "dist/datly.umd.js",
   "scripts": {
-    "build": "microbundle build --entry src/index.js --output dist/datly.js --name datly --format umd --compress --no-sourcemap",
+    "build": "microbundle build --entry src/index.js --output dist/datly.umd.js --name Datly --format umd --compress --no-sourcemap",
+    "dev": "microbundle watch --entry src/index.js --output dist/datly.umd.js --name Datly --format umd",
     "prepublishOnly": "npm run build"
   },
   "devDependencies": {
     "microbundle": "^0.15.1"
   },
-  "dependencies": {
-    "d3": "^7.9.0"
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=14"
   }
 }
