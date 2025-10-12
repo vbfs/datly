@@ -1,5 +1,4 @@
 import BaseModel from './baseModel.js';
-import { plot } from 'nodeplotlib'; // 📊 para plotar loss (precisa instalar nodeplotlib)
 
 class LogisticRegression extends BaseModel {
   constructor({
@@ -352,17 +351,6 @@ class LogisticRegression extends BaseModel {
       auc += (x2 - x1) * (y1 + y2) / 2; // trapezoidal rule
     }
     return Math.abs(auc);
-  }
-
-  // ---------- 🆕 Plot da curva de perda ----------
-  plotLoss() {
-    const x = Array.from({ length: this.losses.length }, (_, i) => i + 1);
-    const y = this.losses;
-    plot([{ x, y, type: 'line', name: 'Loss' }], {
-      title: 'Curva de Perda',
-      xaxis: { title: 'Iterações' },
-      yaxis: { title: 'Loss' }
-    });
   }
 
   score(X, y) {
