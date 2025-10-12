@@ -37,6 +37,7 @@
     "prepublishOnly": "npm run build"
   },
   "devDependencies": {
+    "d3": "^7.9.0",
     "microbundle": "^0.15.1"
   },
   "files": [

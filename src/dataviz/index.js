@@ -43,7 +43,7 @@ class DataViz {
       bins = 30,
       color = '#4299e1',
       width = this.defaultWidth,
-      height = this.defaultHeight
+      height = this.defaultHeight,
     } = options;
 
     const { svg } = this.createContainer(width, height);
