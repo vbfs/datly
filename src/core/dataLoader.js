@@ -1,33 +1,75 @@
+// Detecção de ambiente
+const isNode = typeof process !== 'undefined' &&
+               process.versions != null &&
+               process.versions.node != null;
+
+// Lazy load do fs
+let fs = null;
+let fsPromise = null;
+
+async function getFS() {
+  if (!isNode) return null;
+  if (fs) return fs;
+  if (fsPromise) return fsPromise;
+
+  fsPromise = import('fs').then(m => {
+    fs = m.default || m;
+    return fs;
+  }).catch(() => null);
+
+  return fsPromise;
+}
+
 class DataLoader {
-  loadCSV(filePath, options = {}) {
+  async loadCSV(filePath, options = {}) {
     const defaultOptions = {
-      delimiter: ",",
+      delimiter: ',',
       header: true,
       skipEmptyLines: true,
-      encoding: "utf8",
+      encoding: 'utf8'
     };
 
     const config = { ...defaultOptions, ...options };
 
     try {
-      if (typeof window !== "undefined" && window.fs) {
-        const content = window.fs.readFileSync
-          ? window.fs.readFileSync(filePath, { encoding: config.encoding })
-          : window.fs.readFile(filePath, { encoding: config.encoding });
+      let content;
 
-        return this.parseCSV(content, config);
-      } else {
-        throw new Error("File system not available");
+      // Node.js
+      if (isNode) {
+        const fsModule = await getFS();
+        if (fsModule) {
+          content = fsModule.readFileSync(filePath, { encoding: config.encoding });
+        }
       }
+      // Browser com File System Access API
+      if (!content && typeof window !== 'undefined' && window.fs) {
+        content = window.fs.readFileSync
+          ? window.fs.readFileSync(filePath, { encoding: config.encoding })
+          : await window.fs.readFile(filePath, { encoding: config.encoding });
+      }
+      // Fetch API (browser)
+      if (!content && typeof fetch !== 'undefined') {
+        const response = await fetch(filePath);
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        content = await response.text();
+      }
+
+      if (!content) {
+        throw new Error('No file system available. Use fetch, fs module, or pass CSV text directly to parseCSV()');
+      }
+
+      return this.parseCSV(content, config);
     } catch (error) {
       throw new Error(`Failed to load CSV: ${error.message}`);
     }
   }
 
-  loadJSON(jsonInput, options = {}) {
+  async loadJSON(jsonInput, options = {}) {
     const defaultOptions = {
       validateTypes: true,
-      autoInferHeaders: true,
+      autoInferHeaders: true
     };
 
     const config = { ...defaultOptions, ...options };
@@ -35,25 +77,48 @@ class DataLoader {
     try {
       let jsonData;
 
-      if (typeof jsonInput === "string") {
-        if (
-          jsonInput.endsWith(".json") &&
-          typeof window !== "undefined" &&
-          window.fs
-        ) {
-          const content = window.fs.readFileSync
-            ? window.fs.readFileSync(jsonInput, { encoding: "utf8" })
-            : window.fs.readFile(jsonInput, { encoding: "utf8" });
-          jsonData = JSON.parse(content);
-        } else {
-          jsonData = JSON.parse(jsonInput);
+      // Se é uma string que parece ser um caminho de arquivo
+      if (typeof jsonInput === 'string' && !jsonInput.trim().startsWith('{') && !jsonInput.trim().startsWith('[')) {
+        let content;
+
+        // Node.js
+        if (isNode) {
+          const fsModule = await getFS();
+          if (fsModule) {
+            content = fsModule.readFileSync(jsonInput, { encoding: 'utf8' });
+          }
         }
-      } else if (typeof jsonInput === "object") {
+        // Browser com File System Access API
+        if (!content && typeof window !== 'undefined' && window.fs) {
+          content = window.fs.readFileSync
+            ? window.fs.readFileSync(jsonInput, { encoding: 'utf8' })
+            : await window.fs.readFile(jsonInput, { encoding: 'utf8' });
+        }
+        // Fetch API (browser)
+        if (!content && typeof fetch !== 'undefined') {
+          const response = await fetch(jsonInput);
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          content = await response.text();
+        }
+
+        if (!content) {
+          throw new Error('No file system available');
+        }
+
+        jsonData = JSON.parse(content);
+      }
+      // String JSON
+      else if (typeof jsonInput === 'string') {
+        jsonData = JSON.parse(jsonInput);
+      }
+      // Objeto JS
+      else if (typeof jsonInput === 'object') {
         jsonData = jsonInput;
-      } else {
-        throw new Error(
-          "Invalid JSON input: must be string, file path, or object"
-        );
+      }
+      else {
+        throw new Error('Invalid JSON input: must be string, file path, or object');
       }
 
       return this.parseJSON(jsonData, config);
@@ -64,36 +129,36 @@ class DataLoader {
 
   parseJSON(jsonData, config) {
     if (!jsonData) {
-      throw new Error("JSON data is empty or null");
+      throw new Error('JSON data is empty or null');
     }
 
     if (Array.isArray(jsonData)) {
       return this.parseJSONArray(jsonData, config);
     } else if (jsonData.headers && jsonData.data) {
       return this.parseStructuredJSON(jsonData, config);
-    } else if (typeof jsonData === "object") {
+    } else if (typeof jsonData === 'object') {
       return this.parseJSONObject(jsonData, config);
     } else {
-      throw new Error("Unsupported JSON format");
+      throw new Error('Unsupported JSON format');
     }
   }
 
   parseJSONArray(jsonArray, config) {
     if (jsonArray.length === 0) {
-      throw new Error("JSON array is empty");
+      throw new Error('JSON array is empty');
     }
 
     const firstRow = jsonArray[0];
-    if (typeof firstRow !== "object" || firstRow === null) {
-      throw new Error("JSON array must contain objects");
+    if (typeof firstRow !== 'object' || firstRow === null) {
+      throw new Error('JSON array must contain objects');
     }
 
     let headers;
     if (config.autoInferHeaders) {
       const allKeys = new Set();
-      jsonArray.forEach((row) => {
-        if (typeof row === "object" && row !== null) {
-          Object.keys(row).forEach((key) => allKeys.add(key));
+      jsonArray.forEach(row => {
+        if (typeof row === 'object' && row !== null) {
+          Object.keys(row).forEach(key => allKeys.add(key));
         }
       });
       headers = Array.from(allKeys);
@@ -101,31 +166,29 @@ class DataLoader {
       headers = Object.keys(firstRow);
     }
 
-    const data = jsonArray
-      .map((row, index) => {
-        if (typeof row !== "object" || row === null) {
-          console.warn(`Row ${index} is not an object, skipping`);
-          return null;
-        }
+    const data = jsonArray.map((row, index) => {
+      if (typeof row !== 'object' || row === null) {
+        console.warn(`Row ${index} is not an object, skipping`);
+        return null;
+      }
 
-        const processedRow = {};
-        headers.forEach((header) => {
-          let value = row[header];
-          if (config.validateTypes) {
-            value = this.inferType(value);
-          }
-          processedRow[header] = value;
-        });
-        return processedRow;
-      })
-      .filter((row) => row !== null);
+      const processedRow = {};
+      headers.forEach(header => {
+        let value = row[header];
+        if (config.validateTypes) {
+          value = this.inferType(value);
+        }
+        processedRow[header] = value;
+      });
+      return processedRow;
+    }).filter(row => row !== null);
 
     return {
       headers,
       data,
       length: data.length,
       columns: headers.length,
-      source: "json_array",
+      source: 'json_array'
     };
   }
 
@@ -133,65 +196,63 @@ class DataLoader {
     const { headers, data } = jsonData;
 
     if (!Array.isArray(headers)) {
-      throw new Error("Headers must be an array");
+      throw new Error('Headers must be an array');
     }
 
     if (!Array.isArray(data)) {
-      throw new Error("Data must be an array");
+      throw new Error('Data must be an array');
     }
 
     if (headers.length === 0) {
-      throw new Error("Headers array is empty");
+      throw new Error('Headers array is empty');
     }
 
-    const processedData = data
-      .map((row, index) => {
-        if (Array.isArray(row)) {
-          const processedRow = {};
-          headers.forEach((header, i) => {
-            let value = i < row.length ? row[i] : null;
-            if (config.validateTypes) {
-              value = this.inferType(value);
-            }
-            processedRow[header] = value;
-          });
-          return processedRow;
-        } else if (typeof row === "object" && row !== null) {
-          const processedRow = {};
-          headers.forEach((header) => {
-            let value = row[header];
-            if (config.validateTypes) {
-              value = this.inferType(value);
-            }
-            processedRow[header] = value;
-          });
-          return processedRow;
-        } else {
-          console.warn(`Row ${index} has invalid format, skipping`);
-          return null;
-        }
-      })
-      .filter((row) => row !== null);
+    const processedData = data.map((row, index) => {
+      if (Array.isArray(row)) {
+        const processedRow = {};
+        headers.forEach((header, i) => {
+          let value = i < row.length ? row[i] : null;
+          if (config.validateTypes) {
+            value = this.inferType(value);
+          }
+          processedRow[header] = value;
+        });
+        return processedRow;
+      } else if (typeof row === 'object' && row !== null) {
+        const processedRow = {};
+        headers.forEach(header => {
+          let value = row[header];
+          if (config.validateTypes) {
+            value = this.inferType(value);
+          }
+          processedRow[header] = value;
+        });
+        return processedRow;
+      } else {
+        console.warn(`Row ${index} has invalid format, skipping`);
+        return null;
+      }
+    }).filter(row => row !== null);
 
     return {
       headers,
       data: processedData,
       length: processedData.length,
       columns: headers.length,
-      source: "structured_json",
+      source: 'structured_json'
     };
   }
 
   parseJSONObject(jsonObject, config) {
     const entries = Object.entries(jsonObject);
     if (entries.length === 0) {
-      throw new Error("JSON object is empty");
+      throw new Error('JSON object is empty');
     }
 
-    const headers = ["key", "value"];
+    const headers = ['key', 'value'];
     const data = entries.map(([key, value]) => ({
       key: key,
-      value: config.validateTypes ? this.inferType(value) : value,
+      value: config.validateTypes ? this.inferType(value) : value
     }));
 
     return {
@@ -199,27 +260,22 @@ class DataLoader {
       data,
       length: data.length,
       columns: 2,
-      source: "json_object",
+      source: 'json_object'
     };
   }
 
   parseCSV(content, options) {
-    const lines = content
-      .split("\n")
-      .filter((line) => (options.skipEmptyLines ? line.trim() !== "" : true));
+    const lines = content.split('\n').filter(line =>
+      options.skipEmptyLines ? line.trim() !== '' : true
+    );
 
     if (lines.length === 0) {
-      throw new Error("CSV file is empty");
+      throw new Error('CSV file is empty');
     }
 
     const headers = options.header
-      ? lines[0]
-          .split(options.delimiter)
-          .map((h) => h.trim().replace(/['"]/g, ""))
-      : Array.from(
-          { length: lines[0].split(options.delimiter).length },
-          (_, i) => `col_${i}`
-        );
+      ? lines[0].split(options.delimiter).map(h => h.trim().replace(/['"]/g, ''))
+      : Array.from({ length: lines[0].split(options.delimiter).length }, (_, i) => `col_${i}`);
 
     const startIndex = options.header ? 1 : 0;
     const data = [];
@@ -229,7 +285,7 @@ class DataLoader {
       if (values.length === headers.length) {
         const row = {};
         headers.forEach((header, index) => {
-          let value = values[index].trim().replace(/['"]/g, "");
+          let value = values[index].trim().replace(/['"]/g, '');
           row[header] = this.inferType(value);
         });
         data.push(row);
@@ -240,22 +296,17 @@ class DataLoader {
       headers,
       data,
       length: data.length,
-      columns: headers.length,
+      columns: headers.length
     };
   }
 
   inferType(value) {
-    if (
-      value === "" ||
-      value === "null" ||
-      value === "NULL" ||
-      value === "NaN"
-    ) {
+    if (value === '' || value === 'null' || value === 'NULL' || value === 'NaN') {
       return null;
     }
 
-    if (value === "true" || value === "TRUE") return true;
-    if (value === "false" || value === "FALSE") return false;
+    if (value === 'true' || value === 'TRUE') return true;
+    if (value === 'false' || value === 'FALSE') return false;
 
     if (/^-?\d+$/.test(value)) {
       return parseInt(value, 10);
@@ -271,11 +322,9 @@ class DataLoader {
   cleanData(dataset) {
     const cleaned = {
       ...dataset,
-      data: dataset.data.filter((row) => {
-        return Object.values(row).some(
-          (value) => value !== null && value !== undefined
-        );
-      }),
+      data: dataset.data.filter(row => {
+        return Object.values(row).some(value => value !== null && value !== undefined);
+      })
     };
 
     cleaned.length = cleaned.data.length;
@@ -289,17 +338,15 @@ class DataLoader {
       headers: dataset.headers,
       types: {},
       nullCounts: {},
-      uniqueCounts: {},
+      uniqueCounts: {}
     };
 
-    dataset.headers.forEach((header) => {
-      const column = dataset.data.map((row) => row[header]);
-      const nonNullValues = column.filter(
-        (val) => val !== null && val !== undefined
-      );
-      const types = [...new Set(nonNullValues.map((val) => typeof val))];
+    dataset.headers.forEach(header => {
+      const column = dataset.data.map(row => row[header]);
+      const nonNullValues = column.filter(val => val !== null && val !== undefined);
+      const types = [...new Set(nonNullValues.map(val => typeof val))];
 
-      info.types[header] = types.length === 1 ? types[0] : "mixed";
+      info.types[header] = types.length === 1 ? types[0] : 'mixed';
       info.nullCounts[header] = column.length - nonNullValues.length;
       info.uniqueCounts[header] = new Set(nonNullValues).size;
     });
@@ -308,18 +355,18 @@ class DataLoader {
   }
 
   getColumn(dataset, columnName) {
-    if (!dataset.headers.includes(columnName.trim())) {
+    if (!dataset.headers.includes(columnName)) {
       throw new Error(`Column '${columnName}' not found`);
     }
 
     return dataset.data
-      .map((row) => row[columnName])
-      .filter((val) => val !== null && val !== undefined && !isNaN(val));
+      .map(row => row[columnName])
+      .filter(val => val !== null && val !== undefined && !isNaN(val));
   }
 
   getColumns(dataset, columnNames) {
     const result = {};
-    columnNames.forEach((name) => {
+    columnNames.forEach(name => {
       result[name] = this.getColumn(dataset, name);
     });
     return result;
@@ -329,11 +376,11 @@ class DataLoader {
     return {
       ...dataset,
       data: dataset.data.filter(condition),
-      length: dataset.data.filter(condition).length,
+      length: dataset.data.filter(condition).length
     };
   }
 
-  sortBy(dataset, columnName, order = "asc") {
+  sortBy(dataset, columnName, order = 'asc') {
     const sortedData = [...dataset.data].sort((a, b) => {
       const aVal = a[columnName];
       const bVal = b[columnName];
@@ -341,18 +388,18 @@ class DataLoader {
       if (aVal === null || aVal === undefined) return 1;
       if (bVal === null || bVal === undefined) return -1;
 
-      if (typeof aVal === "string" && typeof bVal === "string") {
-        return order === "asc"
+      if (typeof aVal === 'string' && typeof bVal === 'string') {
+        return order === 'asc'
           ? aVal.localeCompare(bVal)
           : bVal.localeCompare(aVal);
       }
 
-      return order === "asc" ? aVal - bVal : bVal - aVal;
+      return order === 'asc' ? aVal - bVal : bVal - aVal;
     });
 
     return {
       ...dataset,
-      data: sortedData,
+      data: sortedData
     };
   }
 }
