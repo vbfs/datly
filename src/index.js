@@ -466,3 +466,8 @@ class Datly {
 }
 
 export default Datly;
+
+
+// TODO:
+// Adicionar apenas os métodos usados no D3
+// Adicionar o id do elemento onde quero adicionar as views

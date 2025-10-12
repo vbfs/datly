@@ -1,4 +1,50 @@
-import * as d3 from 'd3';
+// d3-selection
+import { select, selectAll } from 'd3-selection';
+
+import { scaleLinear, scaleBand, scalePoint, scaleOrdinal, scaleSequential } from 'd3-scale';
+
+import { extent, max, min, sum, range, mean, deviation, histogram, quantile } from 'd3-array';
+
+import { axisBottom, axisLeft } from 'd3-axis';
+
+import { schemeCategory10, interpolateRdYlBu, interpolateViridis } from 'd3-scale-chromatic';
+
+import { line, area, curveBasis, pie, arc } from 'd3-shape';
+
+
+const d3 = {
+  select,
+  selectAll,
+
+  scaleLinear,
+  scaleBand,
+  scalePoint,
+  scaleOrdinal,
+  scaleSequential,
+
+  extent,
+  max,
+  min,
+  sum,
+  deviation,
+  mean,
+  quantile,
+  histogram,
+  range,
+
+  axisBottom,
+  axisLeft,
+
+  line,
+  area,
+  curveBasis,
+  pie,
+  arc,
+
+  schemeCategory10,
+  interpolateViridis,
+  interpolateRdYlBu
+};
 
 class DataViz {
   constructor(containerId = 'dataviz-container') {
