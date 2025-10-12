@@ -1,9 +1,21 @@
-# Datly - Complete Statistical Analysis Library
+# Datly
 
 ![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 ![D3](https://img.shields.io/badge/d3-v7-orange.svg)
 ![NPM](https://img.shields.io/badge/npm-datly-red.svg)
+
+ **Javascript toolkit for data science, statistical analysis and machine learning.**
+ ---
+
+### ⚡ Key Features:
+- 📈 **Complete Statistics Suite** - From descriptive stats to advanced hypothesis testing
+- 🤖 **7 ML Algorithms** - Classification, regression, and ensemble methods
+- 📊 **13 Visualization Types** - Interactive D3.js charts with one-line commands (requires D3.js)
+- 🔄 **Auto-Analysis** - Intelligent data exploration with automated insights
+- 🎨 **Zero Config** - Works out of the box, customizable when needed
+- 🌐 **Universal** - Same API for browser and Node.js
+---
 
 **Datly** is a comprehensive JavaScript library for statistical analysis, machine learning, and data visualization. Built for both browser and Node.js environments, it provides a complete toolkit for data scientists, analysts, and developers.
 
