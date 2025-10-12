@@ -1,4 +1,43 @@
 class DataLoader {
+    // ==========================
+    // Utils
+    // ==========================
+    normalizeHeader(header) {
+        const original = header;
+        const normalized = header
+            .trim()
+            .replace(/\s+/g, '_')
+            .replace(/[^\w_]/g, '')
+            .toLowerCase();
+        return { original, normalized };
+    }
+
+    deduplicateHeaders(headers) {
+        const seen = new Set();
+        return headers.map(h => {
+            let base = h.normalized;
+            let name = base;
+            let counter = 2;
+            while (seen.has(name)) {
+                name = `${base}_${counter++}`;
+            }
+            seen.add(name);
+            return { ...h, normalized: name };
+        });
+    }
+
+    getNormalizedHeaders(rawHeaders) {
+        const normalizedHeaders = rawHeaders.map(h => this.normalizeHeader(h));
+        return this.deduplicateHeaders(normalizedHeaders);
+    }
+
+    getHeaderNames(headers, type = 'normalized') {
+        return headers.map(h => h[type]);
+    }
+
+    // ==========================
+    // CSV Loader
+    // ==========================
     loadCSV(filePath, options = {}) {
         const defaultOptions = {
             delimiter: ',',
@@ -24,6 +63,49 @@ class DataLoader {
         }
     }
 
+    parseCSV(content, options) {
+        const lines = content.split('\n').filter(line =>
+            options.skipEmptyLines ? line.trim() !== '' : true
+        );
+
+        if (lines.length === 0) {
+            throw new Error('CSV file is empty');
+        }
+
+        const rawHeaders = options.header
+            ? lines[0].split(options.delimiter).map(h => h.trim().replace(/['"]/g, ''))
+            : Array.from({ length: lines[0].split(options.delimiter).length }, (_, i) => `col_${i}`);
+
+        const headers = this.getNormalizedHeaders(rawHeaders);
+        const normalizedNames = this.getHeaderNames(headers, 'normalized');
+
+        const startIndex = options.header ? 1 : 0;
+        const data = [];
+
+        for (let i = startIndex; i < lines.length; i++) {
+            const values = lines[i].split(options.delimiter);
+            if (values.length === headers.length) {
+                const row = {};
+                headers.forEach((h, index) => {
+                    let value = values[index].trim().replace(/['"]/g, '');
+                    row[h.normalized] = this.inferType(value);
+                });
+                data.push(row);
+            }
+        }
+
+        return {
+            headers,
+            data,
+            length: data.length,
+            columns: headers.length,
+            source: 'csv'
+        };
+    }
+
+    // ==========================
+    // JSON Loader
+    // ==========================
     loadJSON(jsonInput, options = {}) {
         const defaultOptions = {
             validateTypes: true,
@@ -57,9 +139,7 @@ class DataLoader {
     }
 
     parseJSON(jsonData, config) {
-        if (!jsonData) {
-            throw new Error('JSON data is empty or null');
-        }
+        if (!jsonData) throw new Error('JSON data is empty or null');
 
         if (Array.isArray(jsonData)) {
             return this.parseJSONArray(jsonData, config);
@@ -73,16 +153,14 @@ class DataLoader {
     }
 
     parseJSONArray(jsonArray, config) {
-        if (jsonArray.length === 0) {
-            throw new Error('JSON array is empty');
-        }
+        if (jsonArray.length === 0) throw new Error('JSON array is empty');
 
         const firstRow = jsonArray[0];
         if (typeof firstRow !== 'object' || firstRow === null) {
             throw new Error('JSON array must contain objects');
         }
 
-        let headers;
+        let rawHeaders;
         if (config.autoInferHeaders) {
             const allKeys = new Set();
             jsonArray.forEach(row => {
@@ -90,10 +168,13 @@ class DataLoader {
                     Object.keys(row).forEach(key => allKeys.add(key));
                 }
             });
-            headers = Array.from(allKeys);
+            rawHeaders = Array.from(allKeys);
         } else {
-            headers = Object.keys(firstRow);
+            rawHeaders = Object.keys(firstRow);
         }
+
+        const headers = this.getNormalizedHeaders(rawHeaders);
+        const normalizedNames = this.getHeaderNames(headers, 'normalized');
 
         const data = jsonArray.map((row, index) => {
             if (typeof row !== 'object' || row === null) {
@@ -102,12 +183,10 @@ class DataLoader {
             }
 
             const processedRow = {};
-            headers.forEach(header => {
-                let value = row[header];
-                if (config.validateTypes) {
-                    value = this.inferType(value);
-                }
-                processedRow[header] = value;
+            headers.forEach(h => {
+                let value = row[h.original];
+                if (config.validateTypes) value = this.inferType(value);
+                processedRow[h.normalized] = value;
             });
             return processedRow;
         }).filter(row => row !== null);
@@ -122,39 +201,29 @@ class DataLoader {
     }
 
     parseStructuredJSON(jsonData, config) {
-        const { headers, data } = jsonData;
+        const { headers: rawHeaders, data } = jsonData;
 
-        if (!Array.isArray(headers)) {
-            throw new Error('Headers must be an array');
-        }
+        if (!Array.isArray(rawHeaders)) throw new Error('Headers must be an array');
+        if (!Array.isArray(data)) throw new Error('Data must be an array');
+        if (rawHeaders.length === 0) throw new Error('Headers array is empty');
 
-        if (!Array.isArray(data)) {
-            throw new Error('Data must be an array');
-        }
-
-        if (headers.length === 0) {
-            throw new Error('Headers array is empty');
-        }
+        const headers = this.getNormalizedHeaders(rawHeaders);
 
         const processedData = data.map((row, index) => {
             if (Array.isArray(row)) {
                 const processedRow = {};
-                headers.forEach((header, i) => {
+                headers.forEach((h, i) => {
                     let value = i < row.length ? row[i] : null;
-                    if (config.validateTypes) {
-                        value = this.inferType(value);
-                    }
-                    processedRow[header] = value;
+                    if (config.validateTypes) value = this.inferType(value);
+                    processedRow[h.normalized] = value;
                 });
                 return processedRow;
             } else if (typeof row === 'object' && row !== null) {
                 const processedRow = {};
-                headers.forEach(header => {
-                    let value = row[header];
-                    if (config.validateTypes) {
-                        value = this.inferType(value);
-                    }
-                    processedRow[header] = value;
+                headers.forEach(h => {
+                    let value = row[h.original];
+                    if (config.validateTypes) value = this.inferType(value);
+                    processedRow[h.normalized] = value;
                 });
                 return processedRow;
             } else {
@@ -174,14 +243,12 @@ class DataLoader {
 
     parseJSONObject(jsonObject, config) {
         const entries = Object.entries(jsonObject);
-        if (entries.length === 0) {
-            throw new Error('JSON object is empty');
-        }
+        if (entries.length === 0) throw new Error('JSON object is empty');
 
-        const headers = ['key', 'value'];
+        const headers = this.getNormalizedHeaders(['key', 'value']);
         const data = entries.map(([key, value]) => ({
-            key: key,
-            value: config.validateTypes ? this.inferType(value) : value
+            [headers[0].normalized]: key,
+            [headers[1].normalized]: config.validateTypes ? this.inferType(value) : value
         }));
 
         return {
@@ -193,58 +260,15 @@ class DataLoader {
         };
     }
 
-    parseCSV(content, options) {
-        const lines = content.split('\n').filter(line =>
-            options.skipEmptyLines ? line.trim() !== '' : true
-        );
-
-        if (lines.length === 0) {
-            throw new Error('CSV file is empty');
-        }
-
-        const headers = options.header ?
-            lines[0].split(options.delimiter).map(h => h.trim().replace(/['"]/g, '')) :
-            Array.from({ length: lines[0].split(options.delimiter).length }, (_, i) => `col_${i}`);
-
-        const startIndex = options.header ? 1 : 0;
-        const data = [];
-
-        for (let i = startIndex; i < lines.length; i++) {
-            const values = lines[i].split(options.delimiter);
-            if (values.length === headers.length) {
-                const row = {};
-                headers.forEach((header, index) => {
-                    let value = values[index].trim().replace(/['"]/g, '');
-                    row[header] = this.inferType(value);
-                });
-                data.push(row);
-            }
-        }
-
-        return {
-            headers,
-            data,
-            length: data.length,
-            columns: headers.length
-        };
-    }
-
+    // ==========================
+    // Core helpers
+    // ==========================
     inferType(value) {
-        if (value === '' || value === 'null' || value === 'NULL' || value === 'NaN') {
-            return null;
-        }
-
+        if (value === '' || value === 'null' || value === 'NULL' || value === 'NaN') return null;
         if (value === 'true' || value === 'TRUE') return true;
         if (value === 'false' || value === 'FALSE') return false;
-
-        if (/^-?\d+$/.test(value)) {
-            return parseInt(value, 10);
-        }
-
-        if (/^-?\d*\.\d+$/.test(value)) {
-            return parseFloat(value);
-        }
-
+        if (/^-?\d+$/.test(value)) return parseInt(value, 10);
+        if (/^-?\d*\.\d+$/.test(value)) return parseFloat(value);
         return value;
     }
 
@@ -255,7 +279,6 @@ class DataLoader {
                 return Object.values(row).some(value => value !== null && value !== undefined);
             })
         };
-
         cleaned.length = cleaned.data.length;
         return cleaned;
     }
@@ -270,21 +293,24 @@ class DataLoader {
             uniqueCounts: {}
         };
 
-        dataset.headers.forEach(header => {
-            const column = dataset.data.map(row => row[header]);
+        const normalizedNames = this.getHeaderNames(dataset.headers, 'normalized');
+
+        normalizedNames.forEach(name => {
+            const column = dataset.data.map(row => row[name]);
             const nonNullValues = column.filter(val => val !== null && val !== undefined);
             const types = [...new Set(nonNullValues.map(val => typeof val))];
 
-            info.types[header] = types.length === 1 ? types[0] : 'mixed';
-            info.nullCounts[header] = column.length - nonNullValues.length;
-            info.uniqueCounts[header] = new Set(nonNullValues).size;
+            info.types[name] = types.length === 1 ? types[0] : 'mixed';
+            info.nullCounts[name] = column.length - nonNullValues.length;
+            info.uniqueCounts[name] = new Set(nonNullValues).size;
         });
 
         return info;
     }
 
     getColumn(dataset, columnName) {
-        if (!dataset.headers.includes(columnName)) {
+        const normalizedNames = this.getHeaderNames(dataset.headers, 'normalized');
+        if (!normalizedNames.includes(columnName.trim())) {
             throw new Error(`Column '${columnName}' not found`);
         }
 
@@ -318,9 +344,9 @@ class DataLoader {
             if (bVal === null || bVal === undefined) return -1;
 
             if (typeof aVal === 'string' && typeof bVal === 'string') {
-                return order === 'asc' ?
-                    aVal.localeCompare(bVal) :
-                    bVal.localeCompare(aVal);
+                return order === 'asc'
+                    ? aVal.localeCompare(bVal)
+                    : bVal.localeCompare(aVal);
             }
 
             return order === 'asc' ? aVal - bVal : bVal - aVal;
