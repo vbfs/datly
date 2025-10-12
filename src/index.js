@@ -52,6 +52,14 @@ class Datly {
     return this.dataLoader.cleanData(dataset);
   }
 
+  getColumn(dataset, columnName) {
+    return this.dataLoader.getColumn(dataset, columnName);
+  }
+
+  getColumns(dataset, columnNames) {
+    return this.dataLoader.getColumns(dataset, columnNames);
+  }
+
   validateData(dataset) {
     return this.validator.validateData(dataset);
   }
@@ -147,7 +155,7 @@ class Datly {
     return this.position.fiveNumberSummary(column);
   }
 
-  rank(column, method = 'average') {
+  rank(column, method = "average") {
     return this.position.rank(column, method);
   }
 
@@ -292,7 +300,6 @@ class Datly {
     return result;
   }
 
-  // ====== Machine Learning: Model Creation ======
   createLinearRegression(options) {
     return this.ml.createLinearRegression(options);
   }
@@ -326,11 +333,11 @@ class Datly {
     return this.ml.trainTestSplit(X, y, testSize, shuffle);
   }
 
-  crossValidate(model, X, y, folds = 5, taskType = 'classification') {
+  crossValidate(model, X, y, folds = 5, taskType = "classification") {
     return this.ml.crossValidate(model, X, y, folds, taskType);
   }
 
-  compareModels(models, X, y, taskType = 'classification') {
+  compareModels(models, X, y, taskType = "classification") {
     return this.ml.compareModels(models, X, y, taskType);
   }
 
@@ -462,12 +469,12 @@ class Datly {
       ...options,
     });
   }
-
 }
 
 export default Datly;
 
-
 // TODO:
-// Adicionar apenas os métodos usados no D3
+// Adicionar apenas os métodos usados no D3 [X]
 // Adicionar o id do elemento onde quero adicionar as views
+// Garantir que todos os métodos da documentação consigam ser chamados pelo datly
+// como exibir os plots no observable hq?
