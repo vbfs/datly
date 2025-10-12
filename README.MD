@@ -55,10 +55,10 @@
 
 ```html
 <!-- Include Datly -->
-<script src="path/to/datly.min.js"></script>
+<script src="https://unpkg.com/datly"></script>
 
 <!-- Include D3.js (only if using visualization module) -->
-<script src="https://d3js.org/d3.v7.min.js"></script>
+<script src="https://unpkg.com/d3"></script>
 
 <script>
   const datly = new Datly();
