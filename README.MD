@@ -2,7 +2,6 @@
 
 ![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
-![D3](https://img.shields.io/badge/d3-v7-orange.svg)
 ![NPM](https://img.shields.io/badge/npm-datly-red.svg)
 
  **Javascript toolkit for data science, statistical analysis and machine learning.**
@@ -11,7 +10,7 @@
 ### ⚡ Key Features:
 - 📈 **Complete Statistics Suite** - From descriptive stats to advanced hypothesis testing
 - 🤖 **7 ML Algorithms** - Classification, regression, and ensemble methods
-- 📊 **13 Visualization Types** - Interactive D3.js charts with one-line commands (requires D3.js)
+- 📊 **13 Visualization Types** - Interactive D3.js charts with one-line commands
 - 🔄 **Auto-Analysis** - Intelligent data exploration with automated insights
 - 🎨 **Zero Config** - Works out of the box, customizable when needed
 - 🌐 **Universal** - Same API for browser and Node.js
@@ -57,9 +56,6 @@
 <!-- Include Datly -->
 <script src="https://unpkg.com/datly"></script>
 
-<!-- Include D3.js (only if using visualization module) -->
-<script src="https://unpkg.com/d3"></script>
-
 <script>
   const datly = new Datly();
 </script>
@@ -70,9 +66,6 @@
 ```bash
 # Core library (statistics and machine learning)
 npm install datly
-
-# With visualization support (includes D3.js)
-npm install datly d3
 ```
 
 ```javascript
@@ -2425,7 +2418,7 @@ console.log(pr);
 
 ### 18. Data Visualization
 
-Create interactive D3.js visualizations (requires D3.js library).
+Create interactive D3.js visualizations
 
 #### Setup
 
@@ -2748,7 +2741,6 @@ console.log('Is Normal:', normalityTest.isNormal);
 const report = datly.reportGenerator.summary(data);
 console.log(report);
 
-// Visualize (requires D3.js)
 datly.plotHistogram(sales, { title: 'Sales Distribution' });
 datly.plotBoxplot(sales, { title: 'Sales Box Plot' });
 ```
@@ -2785,7 +2777,6 @@ const ci = datly.confidenceIntervals.meanDifference(
 );
 console.log('95% CI for difference:', ci.lowerBound, 'to', ci.upperBound);
 
-// Visualize (requires D3.js)
 datly.plotBoxplot([controlGroup, treatmentGroup], {
   title: 'Control vs Treatment',
   labels: ['Control', 'Treatment']
@@ -2830,7 +2821,6 @@ const newAdvertising = [35];
 const prediction = datly.regression.predict(model, newAdvertising);
 console.log('Predicted sales for $35k advertising:', prediction[0]);
 
-// Visualize (requires D3.js)
 datly.plotScatter(advertising, sales, {
   title: 'Advertising vs Sales',
   xlabel: 'Advertising Budget ($1000)',
@@ -2945,7 +2935,7 @@ console.log(textReport);
 - **`Interpreter`**: Interpret statistical results
 - **`AutoAnalyzer`**: Automated analysis
 - **`ML`**: Machine learning models
-- **`Visualizer`**: Data visualization (requires D3.js)
+- **`Visualizer`**: Data visualization
 
 ---
 
@@ -2958,7 +2948,6 @@ console.log(textReport);
 
 **Requirements:**
 - Modern JavaScript (ES6+)
-- D3.js v7+ (only required for visualization module)
 
 ---
 
