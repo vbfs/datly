@@ -11,15 +11,48 @@ import {
   plotQQ,
   plotParallel,
   plotPairplot,
-  plotMultiline
-} from './plot.js';
+  plotMultiline,
+} from "./plot.js";
 
 import {
-  // dataframe
-  dataframe_from_json,
+// Loaders
+  df_from_csv,
+  df_from_json,
+  df_from_array,
+  df_from_structured_json,
+  df_from_object,
+
+  // Manipulação básica
+  df_get_column,
+  df_get_columns,
+  df_filter,
+  df_sort,
+  df_select,
+  df_info,
+  df_head,
+  df_tail,
+
+  // Avançadas
+  df_concat,
+  df_merge,
+  df_dropna,
+  df_fillna,
+  df_groupby,
+  df_aggregate,
+
+  // Utilitárias
+  df_apply,
+  df_to_csv,
+  df_sample,
+  df_unique,
+  df_rename,
+  df_add_column,
+  df_drop,
   df_describe,
   df_missing_report,
   df_corr,
+  df_explode,
+
   eda_overview,
   // stats
   mean,
@@ -115,13 +148,46 @@ import {
   moving_average,
   exponential_smoothing,
   autocorrelation,
-} from './code.js'
+} from "./code.js";
 
 const datly = {
-    dataframe_from_json,
+  // Loaders
+  df_from_csv,
+  df_from_json,
+  df_from_array,
+  df_from_structured_json,
+  df_from_object,
+
+  // Manipulação básica
+  df_get_column,
+  df_get_columns,
+  df_filter,
+  df_sort,
+  df_select,
+  df_info,
+  df_head,
+  df_tail,
+
+  // Avançadas
+  df_concat,
+  df_merge,
+  df_dropna,
+  df_fillna,
+  df_groupby,
+  df_aggregate,
+
+  // Utilitárias
+  df_apply,
+  df_to_csv,
+  df_sample,
+  df_unique,
+  df_rename,
+  df_add_column,
+  df_drop,
   df_describe,
   df_missing_report,
   df_corr,
+  df_explode,
   eda_overview,
   // stats
   mean,
@@ -230,7 +296,7 @@ const datly = {
   plotQQ,
   plotParallel,
   plotPairplot,
-  plotMultiline
+  plotMultiline,
 };
 
 export default datly;

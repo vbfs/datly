@@ -5,12 +5,119 @@
 // - dataframe is a plain object; models are serialized as text (json string) and consumed by other funcs
 
 // =========================
-// helpers: types, math, formatting
+// Helpers internos
 // =========================
+const _inferType = (value) => {
+  if (value === "" || value === "null" || value === "NULL" || value === "NaN")
+    return null;
+  if (value === "true" || value === "TRUE") return true;
+  if (value === "false" || value === "FALSE") return false;
+  if (/^-?\d+$/.test(value)) return parseInt(value, 10);
+  if (/^-?\d*\.\d+$/.test(value)) return parseFloat(value);
+  return value;
+};
+
+const _build_df = (columns, data) => ({
+  type: "dataframe",
+  columns,
+  data,
+  n_rows: data.length,
+  n_cols: columns.length,
+});
+
+const _empty_df = () => _build_df([], []);
+
+const _uniq = (arr) => [...new Set(arr)];
 
 // =========================
-// TEXT FORMATTING (tabular output)
+// HELPER: Formatação de texto
 // =========================
+const _text = (obj, maxItems = 5) => {
+  const lowerKeys = (o) =>
+    Array.isArray(o)
+      ? o.map(lowerKeys)
+      : o && typeof o === "object"
+      ? Object.fromEntries(
+          Object.entries(o).map(([k, v]) => [
+            String(k).toLowerCase(),
+            lowerKeys(v),
+          ])
+        )
+      : typeof o === "number" && Number.isFinite(o)
+      ? Number(Number(o).toPrecision(12))
+      : o;
+
+  const normalized = lowerKeys(obj);
+  const lines = [];
+
+  const walk = (o, indent = 0) => {
+    const pad = " ".repeat(indent);
+    if (Array.isArray(o)) {
+      lines.push(pad + `- list (${o.length} items):`);
+      const limited = o.slice(0, maxItems);
+      limited.forEach((v) => walk(v, indent + 2));
+      if (o.length > maxItems) {
+        lines.push(pad + `  ... ${o.length - maxItems} more items omitted`);
+      }
+    } else if (o && typeof o === "object") {
+      Object.keys(o).forEach((k) => {
+        const v = o[k];
+        if (v && typeof v === "object") {
+          lines.push(pad + k + ":");
+          walk(v, indent + 2);
+        } else {
+          lines.push(pad + k + ": " + String(v).toLowerCase());
+        }
+      });
+    } else {
+      lines.push(pad + String(o).toLowerCase());
+    }
+  };
+
+  walk(normalized);
+  return lines.join("\n");
+};
+
+const _flatten = (obj, prefix = "", maxDepth = 5, currentDepth = 0) => {
+  const result = {};
+
+  if (currentDepth >= maxDepth) {
+    result[prefix || "value"] = obj;
+    return result;
+  }
+
+  for (const [key, value] of Object.entries(obj)) {
+    const path = prefix ? `${prefix}.${key}` : key;
+
+    if (Array.isArray(value)) {
+      // Adiciona o array completo
+      result[path] = value;
+
+      // Se é array de objetos, expande as propriedades
+      if (
+        value.length > 0 &&
+        typeof value[0] === "object" &&
+        !Array.isArray(value[0])
+      ) {
+        const firstItem = value[0];
+        Object.keys(firstItem).forEach((subKey) => {
+          result[`${path}.${subKey}`] = value.map(
+            (item) => item[subKey] ?? null
+          );
+        });
+      }
+    } else if (value && typeof value === "object" && value !== null) {
+      // Recursivamente achata objetos aninhados
+      const nested = _flatten(value, path, maxDepth, currentDepth + 1);
+      Object.assign(result, nested);
+    } else {
+      // Valor primitivo
+      result[path] = value;
+    }
+  }
+
+  return result;
+};
 
 const _toTable = (data, opts = {}) => {
   const maxWidth = opts.max_width ?? 80;
@@ -59,132 +166,10 @@ const _toTable = (data, opts = {}) => {
   return String(data);
 };
 
-const _textTable = (obj, opts = {}) => {
-  const format = opts.format ?? "auto"; // 'auto', 'yaml', 'table'
-
-  // check if we should use table format
-  const shouldTable =
-    format === "table" ||
-    (format === "auto" &&
-      obj.type &&
-      [
-        "split",
-        "prediction",
-        "metric",
-        "describe",
-        "missing_report",
-        "eda",
-      ].includes(obj.type));
-
-  if (!shouldTable) {
-    return _text(obj);
-  }
-
-  // format specific types as tables
-  if (obj.type === "split") {
-    const info = [
-      { metric: "train_size", value: obj.sizes?.train ?? 0 },
-      { metric: "test_size", value: obj.sizes?.test ?? 0 },
-    ];
-    let output = "type: split\n\n" + _toTable(info);
-
-    if (obj.indices) {
-      output +=
-        "\n\ntrain_indices: [" + (obj.indices.train || []).join(", ") + "]";
-      output += "\ntest_indices: [" + (obj.indices.test || []).join(", ") + "]";
-    }
-
-    if (obj.preview?.x_train && obj.preview.x_train.length > 0) {
-      output += "\n\nx_train (preview):";
-      const preview = obj.preview.x_train.map((row, i) => {
-        const rowObj = { row: i };
-        row.forEach((val, j) => {
-          rowObj[`f${j}`] = val;
-        });
-        return rowObj;
-      });
-      output += "\n" + _toTable(preview);
-    }
-
-    if (obj.preview?.y_train && obj.preview.y_train.length > 0) {
-      output +=
-        "\n\ny_train (preview): [" + obj.preview.y_train.join(", ") + "]";
-    }
-
-    return output.toLowerCase();
-  }
-
-  if (obj.type === "prediction") {
-    if (obj.predictions && obj.predictions.length <= 20) {
-      const table = obj.predictions.map((pred, i) => ({
-        index: i,
-        prediction: pred,
-      }));
-      let output = `type: prediction\nmodel: ${obj.name || "unknown"}\n\n`;
-      output += _toTable(table);
-      return output.toLowerCase();
-    }
-  }
-
-  if (obj.type === "metric" && obj.confusion_matrix) {
-    const cm = obj.confusion_matrix;
-    const metrics = [
-      { metric: "accuracy", value: obj.accuracy },
-      { metric: "precision", value: obj.precision },
-      { metric: "recall", value: obj.recall },
-      { metric: "f1", value: obj.f1 },
-    ];
-    let output = `type: ${obj.type}\nname: ${obj.name}\n\n`;
-    output += "confusion matrix:\n";
-    output += _toTable([
-      { "": "predicted_0", predicted_1: "" },
-      { "": `actual_0: ${cm.tn}`, predicted_1: cm.fp },
-      { "": `actual_1: ${cm.fn}`, predicted_1: cm.tp },
-    ]);
-    output += "\n\nmetrics:\n" + _toTable(metrics);
-    return output.toLowerCase();
-  }
-
-  if (obj.type === "describe" && obj.columns) {
-    const cols = Object.keys(obj.columns);
-    const table = cols.map((col) => {
-      const info = obj.columns[col];
-      const row = {
-        column: col,
-        dtype: info.dtype,
-        count: info.count,
-        missing: info.missing,
-      };
-      if (info.dtype === "number") {
-        row.mean = info.mean?.toPrecision(4);
-        row.std = info.std?.toPrecision(4);
-        row.min = info.min?.toPrecision(4);
-        row.median = info.median?.toPrecision(4);
-        row.max = info.max?.toPrecision(4);
-      } else if (info.unique) {
-        row.unique = info.unique;
-      }
-      return row;
-    });
-    return "type: describe\n\n" + _toTable(table).toLowerCase();
-  }
-
-  if (obj.type === "missing_report" && obj.rows) {
-    return "type: missing_report\n\n" + _toTable(obj.rows).toLowerCase();
-  }
-
-  // default to yaml format
-  return _text(obj);
-};
-
 const _isNumber = (v) => typeof v === "number" && Number.isFinite(v);
 const _toNum = (v) => (v == null || v === "" ? NaN : Number(v));
-const _clone = (o) => JSON.parse(JSON.stringify(o));
-
-const _flatten = (arr) => arr.reduce((a, b) => a.concat(b), []);
 
 const _numeric = (arr) => arr.map(_toNum).filter((x) => Number.isFinite(x));
-const _uniq = (arr) => Array.from(new Set(arr));
 
 const _sum = (arr) => _numeric(arr).reduce((a, b) => a + b, 0);
 const _mean = (arr) => {
@@ -313,44 +298,87 @@ const _normInv = (p) => {
 };
 
 // lowercased text output
-const _text = (obj) => {
-  const lowerKeys = (o) =>
-    Array.isArray(o)
-      ? o.map(lowerKeys)
-      : o && typeof o === "object"
-      ? Object.fromEntries(
-          Object.entries(o).map(([k, v]) => [
-            String(k).toLowerCase(),
-            lowerKeys(v),
-          ])
-        )
-      : typeof o === "number" && Number.isFinite(o)
-      ? Number(Number(o).toPrecision(12))
-      : o;
-  const normalized = lowerKeys(obj);
-  const lines = [];
-  const walk = (o, indent = 0) => {
-    const pad = " ".repeat(indent);
-    if (Array.isArray(o)) {
-      lines.push(pad + "- list:");
-      o.forEach((v) => walk(v, indent + 2));
-    } else if (o && typeof o === "object") {
-      Object.keys(o).forEach((k) => {
-        const v = o[k];
-        if (v && typeof v === "object") {
-          lines.push(pad + k + ":");
-          walk(v, indent + 2);
-        } else {
-          lines.push(pad + k + ": " + String(v).toLowerCase());
-        }
-      });
-    } else {
-      lines.push(pad + String(o).toLowerCase());
-    }
-  };
-  walk(normalized);
-  return lines.join("\n");
-};
+// const _text = (obj) => {
+//   const lowerKeys = (o) =>
+//     Array.isArray(o)
+//       ? o.map(lowerKeys)
+//       : o && typeof o === "object"
+//       ? Object.fromEntries(
+//           Object.entries(o).map(([k, v]) => [
+//             String(k).toLowerCase(),
+//             lowerKeys(v),
+//           ])
+//         )
+//       : typeof o === "number" && Number.isFinite(o)
+//       ? Number(Number(o).toPrecision(2))
+//       : o;
+//   const normalized = lowerKeys(obj);
+//   const lines = [];
+//   const walk = (o, indent = 0) => {
+//     const pad = " ".repeat(indent);
+//     if (Array.isArray(o)) {
+//       lines.push(pad + "- array:");
+//       o.forEach((v) => walk(v, indent + 2));
+//     } else if (o && typeof o === "object") {
+//       Object.keys(o).forEach((k) => {
+//         const v = o[k];
+//         if (v && typeof v === "object") {
+//           lines.push(pad + k + ":");
+//           walk(v, indent + 2);
+//         } else {
+//           lines.push(pad + k + ": " + String(v).toLowerCase());
+//         }
+//       });
+//     } else {
+//       lines.push(pad + String(o).toLowerCase());
+//     }
+//   };
+//   walk(normalized);
+//   return lines.join("\n");
+// };
+
+// const _text = (obj) => {
+//   const lowerKeys = (o) =>
+//     Array.isArray(o)
+//       ? o.map(lowerKeys)
+//       : o && typeof o === "object"
+//       ? Object.fromEntries(
+//           Object.entries(o).map(([k, v]) => [
+//             String(k).toLowerCase(),
+//             lowerKeys(v),
+//           ])
+//         )
+//       : typeof o === "number" && Number.isFinite(o)
+//       ? Number(Number(o).toPrecision(12))
+//       : o;
+//   const normalized = lowerKeys(obj);
+//   const lines = [];
+//   const walk = (o, indent = 0) => {
+//     const pad = " ".repeat(indent);
+//     if (Array.isArray(o)) {
+//       lines.push(pad + `- array (${o.length} items):`);
+//       const limited = o.slice(0, 5);
+//       limited.forEach((v) => walk(v, indent + 2));
+//       if (o.length > 5) {
+//         lines.push(pad + `  ... ${o.length - 5} more items omitted`);
+//       }
+//     } else if (o && typeof o === "object") {
+//       Object.keys(o).forEach((k) => {
+//         const v = o[k];
+//         if (v && typeof v === "object") {
+//           lines.push(pad + k + ":");
+//           walk(v, indent + 2);
+//         } else {
+//           lines.push(pad + k + ": " + String(v).toLowerCase());
+//         }
+//       });
+//     } else {
+//       lines.push(pad + String(o).toLowerCase());
+//     }
+//   };
+//   walk(normalized);
+//   return lines.join("\n");
+// };
 
 const _ok = (type, payload) => _text({ type, ...payload });
 const _err = (type, message) => _text({ type, error: message });
@@ -359,92 +387,52 @@ const _err = (type, message) => _text({ type, error: message });
 // dataframe
 // =========================
 
-const dataframe_from_json = (input) => {
-  try {
-    const rows = Array.isArray(input)
-      ? input
-      : typeof input === "object"
-      ? [input]
-      : [];
-    const columns = _uniq(_flatten(rows.map((r) => Object.keys(r.trim()))));
-    const data = rows.map((r) => columns.map((c) => r[c] ?? null));
-    const dtypes = columns.map((c, j) => {
-      const col = data.map((row) => row[j]).filter((v) => v != null);
-      const nums = col.map(_toNum).filter(Number.isFinite);
-      if (nums.length === col.length) return "number";
-      if (col.every((v) => typeof v === "boolean")) return "boolean";
-      return "string";
-    });
-    return _ok("dataframe", {
-      columns,
-      n_rows: data.length,
-      n_cols: columns.length,
-      dtypes,
-      preview: rows.slice(0, 5),
-    });
-  } catch (e) {
-    return _err("dataframe", "invalid input");
-  }
-};
-
-const _df_parse = (df_text) => {
-  // expects text created by dataframe_from_json; we rehydrate minimally by parsing preview when needed
-  // for operations, accept a lightweight format: provide original rows too
-  try {
-    const lines = df_text.split("\n");
-    // not robust parsing; instead require users to carry raw rows via helper
-    return null;
-  } catch {
-    return null;
-  }
-};
-
 // utilities to operate directly on raw rows (array of objects)
-const df_describe = (rows) => {
-  if (!Array.isArray(rows) || !rows.length)
-    return _err("describe", "empty data");
-  const cols = _uniq(_flatten(rows.map((r) => Object.keys(r))));
-  const out = { type: "describe", columns: {} };
-  cols.forEach((c) => {
-    const col = rows.map((r) => r[c]);
-    const nums = col.map(_toNum).filter(Number.isFinite);
-    const miss = col.filter(
-      (v) =>
-        v == null || (typeof v === "number" && !Number.isFinite(v)) || v === ""
-    ).length;
-    const dtype =
-      nums.length === col.length
-        ? "number"
-        : col.every((v) => typeof v === "boolean")
-        ? "boolean"
-        : "string";
-    const info = { dtype, count: col.length, missing: miss };
-    if (dtype === "number") {
-      info.mean = _mean(nums);
-      info.std = _std(nums);
-      info.min = _min(nums);
-      info.q1 = _quantile(nums, 0.25);
-      info.median = _median(nums);
-      info.q3 = _quantile(nums, 0.75);
-      info.max = _max(nums);
-      info.skewness = _skewness(nums);
-      info.kurtosis = _kurtosis(nums);
-    } else if (dtype === "string" || dtype === "boolean") {
-      const vc = {};
-      col.forEach((v) => {
-        const key = String(v);
-        vc[key] = (vc[key] || 0) + 1;
-      });
-      const entries = Object.entries(vc)
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 10);
-      info.top = entries.map(([k, v]) => ({ value: k, freq: v }));
-      info.unique = Object.keys(vc).length;
-    }
-    out.columns[c] = info;
-  });
-  return _text(out);
-};
+// const df_describe = (rows) => {
+//   if (!Array.isArray(rows) || !rows.length)
+//     return _err("describe", "empty data");
+//   const cols = _uniq(_flatten(rows.map((r) => Object.keys(r))));
+//   const out = { type: "describe", columns: {} };
+//   cols.forEach((c) => {
+//     const col = rows.map((r) => r[c]);
+//     const nums = col.map(_toNum).filter(Number.isFinite);
+//     const miss = col.filter(
+//       (v) =>
+//         v == null || (typeof v === "number" && !Number.isFinite(v)) || v === ""
+//     ).length;
+//     const dtype =
+//       nums.length === col.length
+//         ? "number"
+//         : col.every((v) => typeof v === "boolean")
+//         ? "boolean"
+//         : "string";
+//     const info = { dtype, count: col.length, missing: miss };
+//     if (dtype === "number") {
+//       info.mean = _mean(nums);
+//       info.std = _std(nums);
+//       info.min = _min(nums);
+//       info.q1 = _quantile(nums, 0.25);
+//       info.median = _median(nums);
+//       info.q3 = _quantile(nums, 0.75);
+//       info.max = _max(nums);
+//       info.skewness = _skewness(nums);
+//       info.kurtosis = _kurtosis(nums);
+//     } else if (dtype === "string" || dtype === "boolean") {
+//       const vc = {};
+//       col.forEach((v) => {
+//         const key = String(v);
+//         vc[key] = (vc[key] || 0) + 1;
+//       });
+//       const entries = Object.entries(vc)
+//         .sort((a, b) => b[1] - a[1])
+//         .slice(0, 10);
+//       info.top = entries.map(([k, v]) => ({ value: k, freq: v }));
+//       info.unique = Object.keys(vc).length;
+//     }
+//     out.columns[c] = info;
+//   });
+//   return _text(out);
+// };
 
 const df_missing_report = (rows) => {
   if (!Array.isArray(rows) || !rows.length)
@@ -2359,15 +2347,495 @@ const autocorrelation = (arr, lag = 1) => {
 };
 
 // =========================
+// Loaders
+// =========================
+const df_from_csv = (content, opts = {}) => {
+  const config = {
+    delimiter: ",",
+    header: true,
+    skipEmptyLines: true,
+    ...opts,
+  };
+  const lines = content
+    .split("\n")
+    .filter((l) => (config.skipEmptyLines ? l.trim() !== "" : true));
+  if (lines.length === 0) return _empty_df();
+
+  const headers = config.header
+    ? lines[0].split(config.delimiter).map((h) => h.trim().replace(/['"]/g, ""))
+    : Array.from(
+        { length: lines[0].split(config.delimiter).length },
+        (_, i) => `col_${i}`
+      );
+
+  const startIndex = config.header ? 1 : 0;
+  const data = [];
+
+  for (let i = startIndex; i < lines.length; i++) {
+    const values = lines[i].split(config.delimiter);
+    if (values.length === headers.length) {
+      const row = {};
+      headers.forEach((header, idx) => {
+        row[header] = _inferType(values[idx].trim().replace(/['"]/g, ""));
+      });
+      data.push(row);
+    }
+  }
+
+  return _build_df(headers, data);
+};
+
+const df_from_json = (input) => {
+  let jsonData;
+  if (typeof input === "string") jsonData = JSON.parse(input);
+  else jsonData = input;
+
+  if (Array.isArray(jsonData)) return df_from_array(jsonData);
+  if (jsonData.headers && jsonData.data)
+    return df_from_structured_json(jsonData);
+  if (typeof jsonData === "object") return df_from_object(jsonData);
+  return _empty_df();
+};
+
+const df_from_array = (arr) => {
+  if (!arr.length) return _empty_df();
+  const headers = _uniq(arr.flatMap((obj) => Object.keys(obj)));
+  const data = arr.map((o) => {
+    const row = {};
+    headers.forEach((h) => (row[h] = _inferType(o[h])));
+    return row;
+  });
+  return _build_df(headers, data);
+};
+
+const df_from_structured_json = (jsonData) => {
+  const headers = jsonData.headers;
+  const data = jsonData.data.map((row) => {
+    const obj = {};
+    headers.forEach((h, i) => (obj[h] = _inferType(row[i])));
+    return obj;
+  });
+  return _build_df(headers, data);
+};
+
+// MODIFICADO: Agora suporta objetos aninhados
+const df_from_object = (obj, opts = {}) => {
+  const config = {
+    flatten: true, // Se true, achata objetos aninhados
+    maxDepth: 10, // Profundidade máxima para achatamento
+    ...opts,
+  };
+
+  if (config.flatten) {
+    // Achata o objeto em uma única linha com múltiplas colunas
+    const flattened = _flatten(obj, "", config.maxDepth);
+    const columns = Object.keys(flattened);
+    const data = [flattened];
+    return _build_df(columns, data);
+  } else {
+    // Formato antigo: key-value pairs
+    const headers = ["key", "value"];
+    const data = Object.entries(obj).map(([key, val]) => ({
+      key,
+      value: _inferType(val),
+    }));
+    return _build_df(headers, data);
+  }
+};
+
+// =========================
+// Manipulação básica
+// =========================
+const df_get_column = (df, col) => {
+  if (!df.columns.includes(col)) {
+    throw new Error(
+      `Column '${col}' not found. Available: ${df.columns.join(", ")}`
+    );
+  }
+  return df.data.map((row) => row[col]);
+};
+
+// NOVA: Pegar valor único (útil para dataframes de objeto achatado)
+const df_get_value = (df, col) => {
+  const column = df_get_column(df, col);
+  return column[0];
+};
+
+const df_get_columns = (df, cols) => {
+  const result = {};
+  cols.forEach((c) => (result[c] = df_get_column(df, c)));
+  return result;
+};
+
+const df_filter = (df, predicate) => {
+  const filtered = df.data.filter(predicate);
+  return _build_df(df.columns, filtered);
+};
+
+const df_sort = (df, col, order = "asc") => {
+  if (!df.columns.includes(col)) throw new Error(`Column '${col}' not found`);
+  const sorted = [...df.data].sort((a, b) => {
+    const av = a[col],
+      bv = b[col];
+    if (av == null) return 1;
+    if (bv == null) return -1;
+    if (typeof av === "string" && typeof bv === "string")
+      return order === "asc" ? av.localeCompare(bv) : bv.localeCompare(av);
+    return order === "asc" ? av - bv : bv - av;
+  });
+  return _build_df(df.columns, sorted);
+};
+
+const df_select = (df, cols) => {
+  cols.forEach((c) => {
+    if (!df.columns.includes(c)) throw new Error(`Column '${c}' not found`);
+  });
+  const data = df.data.map((row) => {
+    const newRow = {};
+    cols.forEach((c) => (newRow[c] = row[c]));
+    return newRow;
+  });
+  return _build_df(cols, data);
+};
+
+// MODIFICADO: Retorna string formatada com _text
+const df_info = (df) => {
+  const types = {};
+  const nulls = {};
+  const uniques = {};
+
+  df.columns.forEach((c) => {
+    const colVals = df.data.map((r) => r[c]);
+    const nonNull = colVals.filter((v) => v != null);
+    const tset = new Set(nonNull.map((v) => typeof v));
+    types[c] = tset.size === 1 ? [...tset][0] : "mixed";
+    nulls[c] = colVals.length - nonNull.length;
+    uniques[c] = new Set(nonNull).size;
+  });
+
+  const info = {
+    n_rows: df.n_rows,
+    n_cols: df.n_cols,
+    columns: df.columns,
+    types,
+    null_counts: nulls,
+    unique_counts: uniques,
+  };
+
+  return _text(info);
+};
+
+const df_head = (df, n = 5) => _build_df(df.columns, df.data.slice(0, n));
+const df_tail = (df, n = 5) => _build_df(df.columns, df.data.slice(-n));
+
+// =========================
+// Avançadas
+// =========================
+const df_concat = (...dfs) => {
+  if (!dfs.length) return _empty_df();
+  const allColumns = _uniq(dfs.flatMap((df) => df.columns));
+  const allRows = dfs.flatMap((df) => {
+    return df.data.map((row) => {
+      const newRow = {};
+      allColumns.forEach((c) => (newRow[c] = row[c] ?? null));
+      return newRow;
+    });
+  });
+  return _build_df(allColumns, allRows);
+};
+
+const df_merge = (df1, df2, { on, how = "inner" }) => {
+  if (!Array.isArray(on)) on = [on];
+  const colSet = _uniq([...df1.columns, ...df2.columns]);
+  const merged = [];
+
+  for (const row1 of df1.data) {
+    const matches = df2.data.filter((row2) =>
+      on.every((key) => row1[key] === row2[key])
+    );
+
+    if (matches.length > 0) {
+      for (const row2 of matches) merged.push({ ...row1, ...row2 });
+    } else if (how === "left" || how === "outer") {
+      const newRow = { ...row1 };
+      df2.columns.forEach((c) => {
+        if (!on.includes(c)) newRow[c] = null;
+      });
+      merged.push(newRow);
+    }
+  }
+
+  if (how === "right" || how === "outer") {
+    for (const row2 of df2.data) {
+      const match = df1.data.some((row1) =>
+        on.every((key) => row1[key] === row2[key])
+      );
+      if (!match) {
+        const newRow = { ...row2 };
+        df1.columns.forEach((c) => {
+          if (!on.includes(c)) newRow[c] = null;
+        });
+        merged.push(newRow);
+      }
+    }
+  }
+
+  return _build_df(colSet, merged);
+};
+
+const df_dropna = (df, subset = null) => {
+  const cols = subset || df.columns;
+  const filtered = df.data.filter((row) =>
+    cols.every((c) => row[c] !== null && row[c] !== undefined)
+  );
+  return _build_df(df.columns, filtered);
+};
+
+const df_fillna = (df, value, subset = null) => {
+  const cols = subset || df.columns;
+  const filled = df.data.map((row) => {
+    const newRow = { ...row };
+    cols.forEach((c) => {
+      if (newRow[c] === null || newRow[c] === undefined) newRow[c] = value;
+    });
+    return newRow;
+  });
+  return _build_df(df.columns, filled);
+};
+
+const df_groupby = (df, keys) => {
+  if (!Array.isArray(keys)) keys = [keys];
+  const groups = new Map();
+
+  df.data.forEach((row) => {
+    const key = keys.map((k) => row[k]).join("|");
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(row);
+  });
+
+  return { keys, groups };
+};
+
+const df_aggregate = (grouped, aggMap) => {
+  const result = [];
+
+  grouped.groups.forEach((rows, key) => {
+    const keyParts = key.split("|");
+    const rowOut = {};
+    grouped.keys.forEach((k, idx) => (rowOut[k] = keyParts[idx]));
+
+    Object.entries(aggMap).forEach(([col, fn]) => {
+      const vals = rows.map((r) => r[col]).filter((v) => v != null);
+      rowOut[col] = fn(vals);
+    });
+
+    result.push(rowOut);
+  });
+
+  const allCols = _uniq([...grouped.keys, ...Object.keys(aggMap)]);
+  return _build_df(allCols, result);
+};
+
+// =========================
+// UTILITÁRIAS
+// =========================
+
+// 📉 aplicar função em uma coluna
+const df_apply = (df, col, fn) => {
+  if (!df.columns.includes(col)) throw new Error(`Column '${col}' not found`);
+  const newData = df.data.map((row) => ({ ...row, [col]: fn(row[col], row) }));
+  return _build_df(df.columns, newData);
+};
+
+// 🧾 exportar dataframe para CSV
+const df_to_csv = (df, delimiter = ",") => {
+  const header = df.columns.join(delimiter);
+  const rows = df.data.map((row) =>
+    df.columns
+      .map((c) => {
+        const val = row[c];
+        // Serializa arrays e objetos como JSON
+        if (Array.isArray(val) || (typeof val === "object" && val !== null)) {
+          return JSON.stringify(val);
+        }
+        return val ?? "";
+      })
+      .join(delimiter)
+  );
+  return [header, ...rows].join("\n");
+};
+
+// 🧭 amostragem aleatória
+const df_sample = (df, n = 5, seed = null) => {
+  const data = [...df.data];
+  if (seed !== null) {
+    // seed opcional
+    let m = seed;
+    data.sort(() => (Math.sin(m++) > 0 ? 1 : -1));
+  } else {
+    data.sort(() => Math.random() - 0.5);
+  }
+  return _build_df(df.columns, data.slice(0, n));
+};
+
+// 🧪 valores únicos de uma coluna
+const df_unique = (df, col) => {
+  if (!df.columns.includes(col)) throw new Error(`Column '${col}' not found`);
+  return _uniq(df.data.map((row) => row[col]));
+};
+
+// 🧼 renomear coluna(s)
+const df_rename = (df, renameMap) => {
+  const newColumns = df.columns.map((c) => renameMap[c] || c);
+  const newData = df.data.map((row) => {
+    const newRow = {};
+    df.columns.forEach((c) => {
+      const newName = renameMap[c] || c;
+      newRow[newName] = row[c];
+    });
+    return newRow;
+  });
+  return _build_df(newColumns, newData);
+};
+
+// 🧱 adicionar coluna derivada
+const df_add_column = (df, colName, fn) => {
+  if (df.columns.includes(colName))
+    throw new Error(`Column '${colName}' already exists`);
+  const newData = df.data.map((row) => ({ ...row, [colName]: fn(row) }));
+  return _build_df([...df.columns, colName], newData);
+};
+
+// 🧹 remover colunas
+const df_drop = (df, cols) => {
+  if (!Array.isArray(cols)) cols = [cols];
+  const newColumns = df.columns.filter((c) => !cols.includes(c));
+  const newData = df.data.map((row) => {
+    const newRow = {};
+    newColumns.forEach((c) => (newRow[c] = row[c]));
+    return newRow;
+  });
+  return _build_df(newColumns, newData);
+};
+
+// =========================
+// NOVAS: Funções para análise de dados aninhados
+// =========================
+
+// 📊 Expandir array de objetos em múltiplas linhas (explode)
+const df_explode = (df, col) => {
+  if (!df.columns.includes(col)) throw new Error(`Column '${col}' not found`);
+
+  const newData = [];
+  df.data.forEach((row) => {
+    const value = row[col];
+    if (Array.isArray(value) && value.length > 0) {
+      value.forEach((item) => {
+        newData.push({ ...row, [col]: item });
+      });
+    } else {
+      newData.push(row);
+    }
+  });
+
+  return _build_df(df.columns, newData);
+};
+
+// 🔍 Buscar colunas por padrão - RETORNA STRING
+const df_find_columns = (df, pattern) => {
+  const regex = new RegExp(pattern, "i");
+  const matched = df.columns.filter((col) => regex.test(col));
+
+  return _text({
+    pattern,
+    matches_found: matched.length,
+    columns: matched,
+  });
+};
+
+// 📈 Estatísticas descritivas de colunas numéricas - RETORNA STRING
+const df_describe = (df, cols = null) => {
+  const targetCols =
+    cols ||
+    df.columns.filter((col) => {
+      const sample = df.data[0]?.[col];
+      return typeof sample === "number";
+    });
+
+  const stats = {};
+
+  targetCols.forEach((col) => {
+    const values = df.data
+      .map((row) => row[col])
+      .filter((v) => typeof v === "number" && !isNaN(v));
+
+    if (values.length === 0) {
+      stats[col] = { error: "no numeric values" };
+      return;
+    }
+
+    const sorted = [...values].sort((a, b) => a - b);
+    const sum = values.reduce((a, b) => a + b, 0);
+    const mean = sum / values.length;
+    const min = sorted[0];
+    const max = sorted[sorted.length - 1];
+    const median =
+      sorted.length % 2 === 0
+        ? (sorted[sorted.length / 2 - 1] + sorted[sorted.length / 2]) / 2
+        : sorted[Math.floor(sorted.length / 2)];
+
+    stats[col] = { count: values.length, mean, median, min, max, sum };
+  });
+
+  return _text({
+    description: "Descriptive Statistics",
+    analyzed_columns: targetCols.length,
+    statistics: stats,
+  });
+};
+
+// =========================
 // ADDITIONAL EXPORTS
 // =========================
 
 export {
-  // dataframe
-  dataframe_from_json,
+  // Loaders
+  df_from_csv,
+  df_from_json,
+  df_from_array,
+  df_from_structured_json,
+  df_from_object,
+
+  // Manipulação básica
+  df_get_column,
+  df_get_columns,
+  df_filter,
+  df_sort,
+  df_select,
+  df_info,
+  df_head,
+  df_tail,
+
+  // Avançadas
+  df_concat,
+  df_merge,
+  df_dropna,
+  df_fillna,
+  df_groupby,
+  df_aggregate,
+
+  // Utilitárias
+  df_apply,
+  df_to_csv,
+  df_sample,
+  df_unique,
+  df_rename,
+  df_add_column,
+  df_drop,
   df_describe,
   df_missing_report,
   df_corr,
+  df_explode,
   eda_overview,
   // stats
   mean,

@@ -8,7 +8,7 @@ A comprehensive JavaScript library for data analysis, statistics, machine learni
 1. [Introduction](#introduction)
 2. [Installation](#installation)
 3. [Core Concepts](#core-concepts)
-4. [Data Preparation](#data-preparation)
+4. [Dataframe Operations](#dataframe-operations)
 5. [Descriptive Statistics](#descriptive-statistics)
 6. [Exploratory Data Analysis](#exploratory-data-analysis)
 7. [Probability Distributions](#probability-distributions)
@@ -79,14 +79,18 @@ This format makes it easy to:
 
 ---
 
-## Data Preparation
+## Dataframe Operations
 
-### `dataframe_from_json(data)`
+### `df_from_csv(content, options = {})`
 
-Creates a dataframe summary from JSON data.
+Creates a dataframe from CSV content.
 
 **Parameters:**
-- `data`: Array of objects or single object
+- `content`: CSV string content
+- `options`:
+  - `delimiter`: Column delimiter (default: ',')
+  - `header`: First row contains headers (default: true)
+  - `skipEmptyLines`: Skip empty lines (default: true)
 
 **Returns:**
 ```yaml
@@ -95,31 +99,751 @@ columns:
   - name
   - age
   - salary
-n_rows: 100
-n_cols: 3
-dtypes:
-  - string
-  - number
-  - number
-preview:
+data:
   - name: alice
     age: 30
     salary: 50000
   - name: bob
     age: 25
     salary: 45000
+n_rows: 2
+n_cols: 3
 ```
 
 **Example:**
 ```javascript
+const csvContent = `name,age,salary
+Alice,30,50000
+Bob,25,45000
+Charlie,35,60000`;
+
+const df = datly.df_from_csv(csvContent);
+console.log(df);
+```
+
+---
+
+### `df_from_json(input)`
+
+Creates a dataframe from JSON data. Accepts multiple formats:
+- Array of objects
+- Single object (converted to single-row dataframe)
+- Structured JSON with headers and data arrays
+- String (parsed as JSON)
+
+**Returns:**
+```yaml
+type: dataframe
+columns:
+  - name
+  - age
+  - department
+data:
+  - name: alice
+    age: 30
+    department: engineering
+  - name: bob
+    age: 25
+    department: sales
+n_rows: 2
+n_cols: 3
+```
+
+**Example:**
+```javascript
+// From array of objects
 const data = [
-  { name: 'Alice', age: 30, salary: 50000 },
-  { name: 'Bob', age: 25, salary: 45000 },
-  { name: 'Charlie', age: 35, salary: 60000 }
+  { name: 'Alice', age: 30, department: 'Engineering' },
+  { name: 'Bob', age: 25, department: 'Sales' }
+];
+const df = datly.df_from_json(data);
+
+// From JSON string
+const jsonString = '[{"name":"Alice","age":30},{"name":"Bob","age":25}]';
+const df2 = datly.df_from_json(jsonString);
+
+// From structured format
+const structured = {
+  headers: ['name', 'age'],
+  data: [['Alice', 30], ['Bob', 25]]
+};
+const df3 = datly.df_from_json(structured);
+```
+
+---
+
+### `df_from_array(array)`
+
+Creates a dataframe from an array of objects.
+
+**Parameters:**
+- `array`: Array of objects with consistent keys
+
+**Returns:**
+```yaml
+type: dataframe
+columns:
+  - product
+  - price
+  - stock
+data:
+  - product: laptop
+    price: 999
+    stock: 15
+  - product: mouse
+    price: 25
+    stock: 50
+n_rows: 2
+n_cols: 3
+```
+
+**Example:**
+```javascript
+const products = [
+  { product: 'Laptop', price: 999, stock: 15 },
+  { product: 'Mouse', price: 25, stock: 50 },
+  { product: 'Keyboard', price: 75, stock: 30 }
 ];
 
-const df = datly.dataframe_from_json(data);
-console.log(df);
+const df = datly.df_from_array(products);
+```
+
+---
+
+### `df_from_object(object, options = {})`
+
+Creates a dataframe from a single object. Can flatten nested structures.
+
+**Parameters:**
+- `object`: JavaScript object
+- `options`:
+  - `flatten`: Flatten nested objects (default: true)
+  - `maxDepth`: Maximum depth for flattening (default: 10)
+
+**Returns (flattened):**
+```yaml
+type: dataframe
+columns:
+  - user.name
+  - user.age
+  - user.address.city
+  - user.address.country
+  - orders
+  - orders.id
+  - orders.total
+data:
+  - user.name: alice
+    user.age: 30
+    user.address.city: new york
+    user.address.country: usa
+    orders:
+      - id: 1
+        total: 150
+      - id: 2
+        total: 200
+    orders.id:
+      - 1
+      - 2
+    orders.total:
+      - 150
+      - 200
+n_rows: 1
+n_cols: 7
+```
+
+**Example:**
+```javascript
+// Flattened (default)
+const user = {
+  name: 'Alice',
+  age: 30,
+  address: {
+    city: 'New York',
+    country: 'USA'
+  },
+  orders: [
+    { id: 1, total: 150 },
+    { id: 2, total: 200 }
+  ]
+};
+
+const df = datly.df_from_object(user);
+// Flattened columns: name, age, address.city, address.country, etc.
+
+// Non-flattened (key-value pairs)
+const df2 = datly.df_from_object(user, { flatten: false });
+```
+
+---
+
+## Basic Operations
+
+### `df_get_column(dataframe, column)`
+
+Extracts a single column as an array.
+
+**Returns:**
+```javascript
+[30, 25, 35] // Array of values
+```
+
+**Example:**
+```javascript
+const df = datly.df_from_json([
+  { name: 'Alice', age: 30 },
+  { name: 'Bob', age: 25 },
+  { name: 'Charlie', age: 35 }
+]);
+
+const ages = datly.df_get_column(df, 'age');
+console.log(ages); // [30, 25, 35]
+```
+
+---
+
+### `df_get_value(dataframe, column)`
+
+Gets the first value from a column. Useful for single-row dataframes.
+
+**Returns:**
+```javascript
+30 // Single value
+```
+
+**Example:**
+```javascript
+const userObj = { name: 'Alice', age: 30, city: 'NYC' };
+const df = datly.df_from_object(userObj);
+
+const age = datly.df_get_value(df, 'age');
+console.log(age); // 30
+```
+
+---
+
+### `df_get_columns(dataframe, columns)`
+
+Extracts multiple columns as an object of arrays.
+
+**Returns:**
+```javascript
+{
+  name: ['Alice', 'Bob', 'Charlie'],
+  age: [30, 25, 35]
+}
+```
+
+**Example:**
+```javascript
+const df = datly.df_from_json([
+  { name: 'Alice', age: 30, salary: 50000 },
+  { name: 'Bob', age: 25, salary: 45000 }
+]);
+
+const subset = datly.df_get_columns(df, ['name', 'age']);
+console.log(subset);
+```
+
+---
+
+### `df_head(dataframe, n = 5)`
+
+Returns the first n rows.
+
+**Returns:**
+```yaml
+type: dataframe
+columns:
+  - name
+  - age
+data:
+  - name: alice
+    age: 30
+  - name: bob
+    age: 25
+n_rows: 2
+n_cols: 2
+```
+
+**Example:**
+```javascript
+const df = datly.df_from_json([...largeDataset]);
+const first3 = datly.df_head(df, 3);
+```
+
+---
+
+### `df_tail(dataframe, n = 5)`
+
+Returns the last n rows.
+
+**Example:**
+```javascript
+const df = datly.df_from_json([...largeDataset]);
+const last3 = datly.df_tail(df, 3);
+```
+
+---
+
+### `df_info(dataframe)`
+
+Returns detailed information about the dataframe structure.
+
+**Returns:**
+```yaml
+n_rows: 100
+n_cols: 5
+columns:
+  - name
+  - age
+  - salary
+  - department
+  - active
+types:
+  name: string
+  age: number
+  salary: number
+  department: string
+  active: boolean
+null_counts:
+  name: 0
+  age: 2
+  salary: 1
+unique_counts:
+  name: 95
+  age: 45
+```
+
+**Example:**
+```javascript
+const df = datly.df_from_json(employeeData);
+const info = datly.df_info(df);
+console.log(info);
+```
+
+---
+
+## Data Selection
+
+### `df_select(dataframe, columns)`
+
+Selects specific columns.
+
+**Returns:**
+```yaml
+type: dataframe
+columns:
+  - name
+  - salary
+data:
+  - name: alice
+    salary: 50000
+n_rows: 1
+n_cols: 2
+```
+
+**Example:**
+```javascript
+const df = datly.df_from_json(employeeData);
+const subset = datly.df_select(df, ['name', 'salary']);
+```
+
+---
+
+### `df_filter(dataframe, predicate)`
+
+Filters rows based on a predicate function.
+
+**Returns:**
+```yaml
+type: dataframe
+columns:
+  - name
+  - age
+  - salary
+data:
+  - name: alice
+    age: 30
+    salary: 50000
+  - name: charlie
+    age: 35
+    salary: 60000
+n_rows: 2
+n_cols: 3
+```
+
+**Example:**
+```javascript
+const df = datly.df_from_json(employeeData);
+
+// Filter employees older than 28
+const filtered = datly.df_filter(df, row => row.age > 28);
+
+// Multiple conditions
+const highEarners = datly.df_filter(df, row =>
+  row.salary > 55000 && row.department === 'Engineering'
+);
+```
+
+---
+
+### `df_sort(dataframe, column, order = 'asc')`
+
+Sorts dataframe by a column.
+
+**Example:**
+```javascript
+const df = datly.df_from_json(employeeData);
+
+// Sort ascending
+const sortedAsc = datly.df_sort(df, 'age', 'asc');
+
+// Sort descending
+const sortedDesc = datly.df_sort(df, 'salary', 'desc');
+```
+
+---
+
+## Data Cleaning
+
+### `df_dropna(dataframe, subset = null)`
+
+Removes rows with null/undefined values.
+
+**Example:**
+```javascript
+const df = datly.df_from_json([
+  { name: 'Alice', age: 30, email: 'alice@example.com' },
+  { name: 'Bob', age: null, email: 'bob@example.com' },
+  { name: 'Charlie', age: 35, email: null }
+]);
+
+// Drop rows with any null values
+const cleaned = datly.df_dropna(df);
+
+// Drop rows with null in specific columns
+const cleanedPartial = datly.df_dropna(df, ['age']);
+```
+
+---
+
+### `df_fillna(dataframe, value, subset = null)`
+
+Fills null/undefined values with a specified value.
+
+**Example:**
+```javascript
+const df = datly.df_from_json([
+  { name: 'Alice', age: 30, score: 85 },
+  { name: 'Bob', age: null, score: 90 },
+  { name: 'Charlie', age: 35, score: null }
+]);
+
+// Fill all nulls with 0
+const filled = datly.df_fillna(df, 0);
+
+// Fill specific columns
+const filledPartial = datly.df_fillna(df, 0, ['score']);
+```
+
+---
+
+### `df_drop(dataframe, columns)`
+
+Removes specified columns.
+
+**Example:**
+```javascript
+const df = datly.df_from_json(employeeData);
+
+// Drop single column
+const dropped = datly.df_drop(df, 'email');
+
+// Drop multiple columns
+const droppedMultiple = datly.df_drop(df, ['email', 'phone', 'address']);
+```
+
+---
+
+### `df_rename(dataframe, renameMap)`
+
+Renames columns.
+
+**Example:**
+```javascript
+const df = datly.df_from_json([
+  { name: 'Alice', age: 30, salary: 50000 }
+]);
+
+const renamed = datly.df_rename(df, {
+  name: 'employee_name',
+  age: 'employee_age',
+  salary: 'monthly_salary'
+});
+```
+
+---
+
+## Advanced Operations
+
+### `df_concat(...dataframes)`
+
+Concatenates multiple dataframes vertically.
+
+**Example:**
+```javascript
+const df1 = datly.df_from_json([
+  { name: 'Alice', age: 30 }
+]);
+
+const df2 = datly.df_from_json([
+  { name: 'Bob', age: 25 }
+]);
+
+const combined = datly.df_concat(df1, df2);
+```
+
+---
+
+### `df_merge(dataframe1, dataframe2, options)`
+
+Merges two dataframes (SQL-style join).
+
+**Parameters:**
+- `options`:
+  - `on`: Column name(s) to join on
+  - `how`: 'inner', 'left', 'right', or 'outer'
+
+**Example:**
+```javascript
+const employees = datly.df_from_json([
+  { id: 1, name: 'Alice', dept: 'Engineering' },
+  { id: 2, name: 'Bob', dept: 'Sales' }
+]);
+
+const salaries = datly.df_from_json([
+  { id: 1, salary: 50000 },
+  { id: 2, salary: 45000 }
+]);
+
+// Inner join
+const merged = datly.df_merge(employees, salaries, {
+  on: 'id',
+  how: 'inner'
+});
+
+// Multiple keys
+const merged2 = datly.df_merge(df1, df2, {
+  on: ['id', 'year'],
+  how: 'left'
+});
+```
+
+---
+
+### `df_groupby(dataframe, keys)`
+
+Groups dataframe by columns.
+
+**Returns:**
+```javascript
+{
+  keys: ['department'],
+  groups: Map { ... }
+}
+```
+
+**Example:**
+```javascript
+const df = datly.df_from_json([
+  { name: 'Alice', department: 'Engineering', salary: 50000 },
+  { name: 'Bob', department: 'Sales', salary: 45000 },
+  { name: 'Charlie', department: 'Engineering', salary: 60000 }
+]);
+
+// Group by single column
+const grouped = datly.df_groupby(df, 'department');
+
+// Group by multiple columns
+const multiGrouped = datly.df_groupby(df, ['department', 'level']);
+```
+
+---
+
+### `df_aggregate(grouped, aggMap)`
+
+Applies aggregation functions to grouped data.
+
+**Example:**
+```javascript
+const df = datly.df_from_json(employeeData);
+const grouped = datly.df_groupby(df, 'department');
+
+// Average salary and age by department
+const aggregated = datly.df_aggregate(grouped, {
+  salary: arr => arr.reduce((a, b) => a + b, 0) / arr.length,
+  age: arr => arr.reduce((a, b) => a + b, 0) / arr.length
+});
+
+// Custom aggregations
+const customAgg = datly.df_aggregate(grouped, {
+  salary: arr => Math.max(...arr),
+  age: arr => Math.min(...arr)
+});
+```
+
+---
+
+## Utility Functions
+
+### `df_apply(dataframe, column, function)`
+
+Applies a function to transform a column.
+
+**Example:**
+```javascript
+const df = datly.df_from_json([
+  { name: 'Alice', salary: 50000 },
+  { name: 'Bob', salary: 45000 }
+]);
+
+// Increase all salaries by 10%
+const increased = datly.df_apply(df, 'salary', val => val * 1.1);
+
+// Access full row
+const withBonus = datly.df_apply(df, 'salary', (val, row) => {
+  return row.name === 'Alice' ? val * 1.2 : val * 1.1;
+});
+```
+
+---
+
+### `df_add_column(dataframe, columnName, function)`
+
+Adds a new derived column.
+
+**Example:**
+```javascript
+const df = datly.df_from_json([
+  { name: 'Alice', salary: 50000, bonus: 5000 },
+  { name: 'Bob', salary: 45000, bonus: 3000 }
+]);
+
+// Add total compensation
+const withTotal = datly.df_add_column(df, 'total_comp',
+  row => row.salary + row.bonus
+);
+
+// Add calculated column
+const withTax = datly.df_add_column(df, 'tax',
+  row => row.salary * 0.25
+);
+```
+
+---
+
+### `df_unique(dataframe, column)`
+
+Returns unique values from a column.
+
+**Example:**
+```javascript
+const df = datly.df_from_json(employeeData);
+const departments = datly.df_unique(df, 'department');
+console.log(departments); // ['Engineering', 'Sales', 'HR']
+```
+
+---
+
+### `df_sample(dataframe, n = 5, seed = null)`
+
+Returns a random sample of rows.
+
+**Example:**
+```javascript
+const df = datly.df_from_json(largeDataset);
+
+// Random sample
+const sample = datly.df_sample(df, 10);
+
+// Reproducible with seed
+const reproducible = datly.df_sample(df, 10, 42);
+```
+
+---
+
+### `df_to_csv(dataframe, delimiter = ',')`
+
+Exports dataframe to CSV string.
+
+**Returns:**
+```csv
+name,age,salary
+Alice,30,50000
+Bob,25,45000
+```
+
+**Example:**
+```javascript
+const df = datly.df_from_json(employeeData);
+
+// Export to CSV
+const csv = datly.df_to_csv(df);
+
+// Custom delimiter
+const tsv = datly.df_to_csv(df, '\t');
+```
+
+---
+
+## Working with Nested Data
+
+### `df_explode(dataframe, column)`
+
+Expands array values into multiple rows.
+
+**Example:**
+```javascript
+const df = datly.df_from_json([
+  { user: 'Alice', order_ids: [1, 2, 3] },
+  { user: 'Bob', order_ids: [4] }
+]);
+
+// Explode order_ids
+const exploded = datly.df_explode(df, 'order_ids');
+// Alice appears 3 times (one per order)
+```
+
+---
+
+### `df_find_columns(dataframe, pattern)`
+
+Searches for columns matching a pattern.
+
+**Returns:**
+```yaml
+pattern: user
+matches_found: 3
+columns:
+  - user.name
+  - user.age
+  - user.email
+```
+
+**Example:**
+```javascript
+const user = {
+  name: 'Alice',
+  address: {
+    street: '123 Main St',
+    city: 'NYC'
+  }
+};
+
+const df = datly.df_from_object(user);
+
+// Find address columns
+const addressCols = datly.df_find_columns(df, 'address');
 ```
 
 ---
