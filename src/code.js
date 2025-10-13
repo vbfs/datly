@@ -2961,6 +2961,7 @@ export {
   df_describe,
   df_missing_report,
   df_corr,
+  df_explode,
   eda_overview,
   // stats
   mean,

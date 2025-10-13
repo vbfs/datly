@@ -15,7 +15,7 @@ import {
 } from "./plot.js";
 
 import {
-  // Loaders
+// Loaders
   df_from_csv,
   df_from_json,
   df_from_array,
@@ -51,6 +51,8 @@ import {
   df_describe,
   df_missing_report,
   df_corr,
+  df_explode,
+
   eda_overview,
   // stats
   mean,
@@ -185,6 +187,7 @@ const datly = {
   df_describe,
   df_missing_report,
   df_corr,
+  df_explode,
   eda_overview,
   // stats
   mean,
