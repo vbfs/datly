@@ -1,6 +1,6 @@
 {
   "name": "datly",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "A JavaScript toolkit for data science, statistics, and machine learning in the browser or Node.js.",
   "keywords": [
     "data-science",
@@ -40,8 +40,8 @@
     }
   },
   "scripts": {
-    "build": "microbundle --entry src/index.js --format modern,esm,cjs,umd --name Datly --compress --no-sourcemap --external none",
-    "dev": "microbundle watch --entry src/index.js --format modern,esm,cjs,umd --name Datly --external none",
+    "build": "microbundle --entry src/index.js --format modern,esm,cjs,umd --name datly --compress --no-sourcemap --external none",
+    "dev": "microbundle watch --entry src/index.js --format modern,esm,cjs,umd --name datly --external none",
     "prepublishOnly": "npm run build"
   },
   "devDependencies": {
