@@ -117,7 +117,7 @@ import {
   autocorrelation,
 } from './code.js'
 
-const daitly = {
+const datly = {
     dataframe_from_json,
   df_describe,
   df_missing_report,
@@ -233,4 +233,4 @@ const daitly = {
   plotMultiline
 };
 
-export default daitly;
+export default datly;
