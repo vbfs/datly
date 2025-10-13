@@ -366,7 +366,7 @@ const dataframe_from_json = (input) => {
       : typeof input === "object"
       ? [input]
       : [];
-    const columns = _uniq(_flatten(rows.map((r) => Object.keys(r))));
+    const columns = _uniq(_flatten(rows.map((r) => Object.keys(r.trim()))));
     const data = rows.map((r) => columns.map((c) => r[c] ?? null));
     const dtypes = columns.map((c, j) => {
       const col = data.map((row) => row[j]).filter((v) => v != null);
