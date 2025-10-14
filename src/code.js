@@ -1,9 +1,4 @@
 // datly.js — functional, text-first data-science toolkit for JavaScript
-// design goals:
-// - functional api (only functions)
-// - every public function returns lowercase, human-readable structured TEXT
-// - dataframe is a plain object; models are serialized as text (json string) and consumed by other funcs
-
 // =========================
 // Helpers internos
 // =========================
@@ -29,54 +24,7 @@ const _empty_df = () => _build_df([], []);
 
 const _uniq = (arr) => [...new Set(arr)];
 
-// =========================
-// HELPER: Formatação de texto
-// =========================
-const _text = (obj, maxItems = 5) => {
-  const lowerKeys = (o) =>
-    Array.isArray(o)
-      ? o.map(lowerKeys)
-      : o && typeof o === "object"
-      ? Object.fromEntries(
-          Object.entries(o).map(([k, v]) => [
-            String(k).toLowerCase(),
-            lowerKeys(v),
-          ])
-        )
-      : typeof o === "number" && Number.isFinite(o)
-      ? Number(Number(o).toPrecision(12))
-      : o;
-
-  const normalized = lowerKeys(obj);
-  const lines = [];
-
-  const walk = (o, indent = 0) => {
-    const pad = " ".repeat(indent);
-    if (Array.isArray(o)) {
-      lines.push(pad + `- list (${o.length} items):`);
-      const limited = o.slice(0, maxItems);
-      limited.forEach((v) => walk(v, indent + 2));
-      if (o.length > maxItems) {
-        lines.push(pad + `  ... ${o.length - maxItems} more items omitted`);
-      }
-    } else if (o && typeof o === "object") {
-      Object.keys(o).forEach((k) => {
-        const v = o[k];
-        if (v && typeof v === "object") {
-          lines.push(pad + k + ":");
-          walk(v, indent + 2);
-        } else {
-          lines.push(pad + k + ": " + String(v).toLowerCase());
-        }
-      });
-    } else {
-      lines.push(pad + String(o).toLowerCase());
-    }
-  };
-
-  walk(normalized);
-  return lines.join("\n");
-};
+const _text = (obj) => obj;
 
 const _flatten = (obj, prefix = "", maxDepth = 5, currentDepth = 0) => {
   const result = {};
@@ -528,6 +476,7 @@ const normal_pdf = (x, mu = 0, sigma = 1) =>
       ? x.map((v) => _phi((v - mu) / sigma) / sigma)
       : _phi((x - mu) / sigma) / sigma,
   });
+
 const normal_cdf = (x, mu = 0, sigma = 1) =>
   _ok("distribution", {
     name: "normal_cdf",
@@ -536,6 +485,7 @@ const normal_cdf = (x, mu = 0, sigma = 1) =>
       ? x.map((v) => _Phi((v - mu) / sigma))
       : _Phi((x - mu) / sigma),
   });
+
 const normal_ppf = (p, mu = 0, sigma = 1) =>
   _ok("distribution", {
     name: "normal_ppf",
@@ -1009,7 +959,7 @@ const train_test_split = (X, y, test_size = 0.2, seed = 42) => {
     type: "split",
     sizes: { train: y_train.length, test: y_test.length },
     indices: { train: train_idx, test: test_idx },
-    preview: { x_train: X_train.slice(0, 2), y_train: y_train.slice(0, 5) },
+    preview: { x_train:  X_train.slice(0, 2), y_train: y_train.slice(0, 5) },
   });
 };
 
@@ -1859,6 +1809,7 @@ const standard_scaler_transform = (scaler_text, X) => {
     return _text({
       type: "scaled_data",
       method: "standard",
+      data: X_scaled,
       preview: X_scaled.slice(0, 5),
     });
   } catch {
@@ -2135,57 +2086,104 @@ const ensemble_voting_regressor = (models_text, X_test) => {
 
 const cross_validate = (X, y, model_type, opts = {}) => {
   const k_folds = opts.k_folds ?? 5;
+  const normalize = opts.normalize ?? false;
+  const shuffle = opts.shuffle ?? true;  // ← Embaralhar antes de dividir
+  const seed = opts.seed ?? 42;
   const n = X.length;
-  const fold_size = Math.floor(n / k_folds);
 
+  // ✅ Embaralhar índices se solicitado
+  let indices = Array.from({ length: n }, (_, i) => i);
+  if (shuffle) {
+    let s = seed;
+    const rand = () => (s = (s * 9301 + 49297) % 233280) / 233280;
+    indices.sort(() => rand() - 0.5);
+  }
+
+  const fold_size = Math.floor(n / k_folds);
   const scores = [];
 
   for (let fold = 0; fold < k_folds; fold++) {
     const test_start = fold * fold_size;
     const test_end = fold === k_folds - 1 ? n : (fold + 1) * fold_size;
 
-    const X_train = [...X.slice(0, test_start), ...X.slice(test_end)];
-    const y_train = [...y.slice(0, test_start), ...y.slice(test_end)];
-    const X_test = X.slice(test_start, test_end);
-    const y_test = y.slice(test_start, test_end);
+    // Usar índices embaralhados
+    const train_idx = [...indices.slice(0, test_start), ...indices.slice(test_end)];
+    const test_idx = indices.slice(test_start, test_end);
+
+    let X_train = train_idx.map(i => X[i]);
+    let y_train = train_idx.map(i => y[i]);
+    let X_test = test_idx.map(i => X[i]);
+    const y_test = test_idx.map(i => y[i]);
+
+    // Normalização dentro do fold
+    if (normalize) {
+      const scaler = standard_scaler_fit(X_train);
+      const train_scaled = standard_scaler_transform(scaler, X_train);
+      const test_scaled = standard_scaler_transform(scaler, X_test);
+
+      X_train = _lowerJson(train_scaled).data || train_scaled.data;
+      X_test = _lowerJson(test_scaled).data || test_scaled.data;
+    }
 
     let model_text;
     let predictions;
 
+    // Treinar e avaliar baseado no tipo de modelo
     if (model_type === "linear_regression") {
       model_text = train_linear_regression(X_train, y_train);
       const pred_result = _lowerJson(predict_linear(model_text, X_test));
       predictions = pred_result.predictions;
       const metrics = _lowerJson(metrics_regression(y_test, predictions));
       scores.push(metrics.r2);
+
     } else if (model_type === "logistic_regression") {
       model_text = train_logistic_regression(X_train, y_train, opts);
       const pred_result = _lowerJson(predict_logistic(model_text, X_test));
       predictions = pred_result.classes;
       const metrics = _lowerJson(metrics_classification(y_test, predictions));
       scores.push(metrics.accuracy);
+
     } else if (model_type === "knn_classifier") {
       model_text = train_knn_classifier(X_train, y_train, opts.k ?? 5);
-      const pred_result = _lowerJson(
-        predict_knn_classifier(model_text, X_test)
-      );
+      const pred_result = _lowerJson(predict_knn_classifier(model_text, X_test));
       predictions = pred_result.predictions;
       const metrics = _lowerJson(metrics_classification(y_test, predictions));
       scores.push(metrics.accuracy);
+
     } else if (model_type === "decision_tree_classifier") {
       model_text = train_decision_tree_classifier(X_train, y_train, opts);
       const pred_result = _lowerJson(predict_decision_tree(model_text, X_test));
       predictions = pred_result.predictions;
       const metrics = _lowerJson(metrics_classification(y_test, predictions));
       scores.push(metrics.accuracy);
+
     } else if (model_type === "random_forest_classifier") {
       model_text = train_random_forest_classifier(X_train, y_train, opts);
-      const pred_result = _lowerJson(
-        predict_random_forest_classifier(model_text, X_test)
-      );
+      const pred_result = _lowerJson(predict_random_forest_classifier(model_text, X_test));
       predictions = pred_result.predictions;
       const metrics = _lowerJson(metrics_classification(y_test, predictions));
       scores.push(metrics.accuracy);
+
+    } else if (model_type === "knn_regressor") {
+      model_text = train_knn_regressor(X_train, y_train, opts.k ?? 5);
+      const pred_result = _lowerJson(predict_knn_regressor(model_text, X_test));
+      predictions = pred_result.predictions;
+      const metrics = _lowerJson(metrics_regression(y_test, predictions));
+      scores.push(metrics.r2);
+
+    } else if (model_type === "decision_tree_regressor") {
+      model_text = train_decision_tree_regressor(X_train, y_train, opts);
+      const pred_result = _lowerJson(predict_decision_tree(model_text, X_test));
+      predictions = pred_result.predictions;
+      const metrics = _lowerJson(metrics_regression(y_test, predictions));
+      scores.push(metrics.r2);
+
+    } else if (model_type === "random_forest_regressor") {
+      model_text = train_random_forest_regressor(X_train, y_train, opts);
+      const pred_result = _lowerJson(predict_random_forest_regressor(model_text, X_test));
+      predictions = pred_result.predictions;
+      const metrics = _lowerJson(metrics_regression(y_test, predictions));
+      scores.push(metrics.r2);
     }
   }
 
@@ -2196,6 +2194,10 @@ const cross_validate = (X, y, model_type, opts = {}) => {
     scores,
     mean_score: _mean(scores),
     std_score: _std(scores, true),
+    min_score: _min(scores),
+    max_score: _max(scores),
+    normalized: normalize,
+    shuffled: shuffle,
   });
 };
 
