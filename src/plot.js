@@ -82,6 +82,29 @@ function createSvg(userSelector, opts) {
     .attr("height", config.height)
     .style("background", config.background);
 
+  // Adicionar xlabel
+  if (config.xlabel) {
+    svg.append("text")
+      .attr("x", config.width / 2)
+      .attr("y", config.height - 10) // 10px da borda inferior
+      .attr("text-anchor", "middle")
+      .style("font-family", "sans-serif")
+      .style("font-size", "14px")
+      .style("fill", config.xAxisColor || config.axisColor || defaultConfig.axisColor)
+      .text(config.xlabel);
+  }
+
+  // Adicionar ylabel
+  if (config.ylabel) {
+    svg.append("text")
+      .attr("transform", `translate(15, ${config.height / 2}) rotate(-90)`)
+      .attr("text-anchor", "middle")
+      .style("font-family", "sans-serif")
+      .style("font-size", "14px")
+      .style("fill", config.yAxisColor || config.axisColor || defaultConfig.axisColor)
+      .text(config.ylabel);
+  }
+
   return { svg, config };
 }
 
