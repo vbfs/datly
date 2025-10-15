@@ -2509,8 +2509,19 @@ const df_info = (df) => {
   df.columns.forEach((c) => {
     const colVals = df.data.map((r) => r[c]);
     const nonNull = colVals.filter((v) => v != null);
-    const tset = new Set(nonNull.map((v) => typeof v));
-    types[c] = tset.size === 1 ? [...tset][0] : "mixed";
+
+    // Coletar os tipos únicos
+    const typeSet = new Set(nonNull.map((v) => typeof v));
+
+    // Converter Set para array e pegar o tipo apropriado
+    if (typeSet.size === 0) {
+      types[c] = "empty";
+    } else if (typeSet.size === 1) {
+      types[c] = Array.from(typeSet)[0]; // ou [...typeSet][0]
+    } else {
+      types[c] = "mixed";
+    }
+
     nulls[c] = colVals.length - nonNull.length;
     uniques[c] = new Set(nonNull).size;
   });
