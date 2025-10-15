@@ -6,7 +6,7 @@ import {
 } from './src/code.js';
 
 // 1) estatística básica
-console.log( mean([1,2,3,4]) );            // texto: type/statistic/name/value/...
+console.log( mean([1,2,3,4]) );
 console.log( stddeviation([1,2,3,4]) );
 
 // 2) dataframe + eda
