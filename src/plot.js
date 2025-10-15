@@ -45,6 +45,7 @@ const defaultConfig = {
   xlabel: "",
   ylabel: "",
   axisColor: "#000000",
+  titleColor: "#000000",
   xAxisColor: null,
   yAxisColor: null
 };
@@ -71,6 +72,7 @@ function createSvg(userSelector, opts) {
       .style("text-align", "center")
       .style("font-family", "sans-serif")
       .style("margin-bottom", "5px")
+      .style("color", config.titleColor || defaultConfig.titleColor)
       .text(config.title);
   }
 
