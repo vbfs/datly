@@ -44,6 +44,9 @@ const defaultConfig = {
   title: "",
   xlabel: "",
   ylabel: "",
+  axisColor: "#000000",
+  xAxisColor: null,
+  yAxisColor: null
 };
 
 function createSvg(userSelector, opts) {
@@ -80,6 +83,13 @@ function createSvg(userSelector, opts) {
   return { svg, config };
 }
 
+// ✅ Função para aplicar cor nos eixos
+function styleAxis(axisSelection, color) {
+  axisSelection.selectAll("path").attr("stroke", color);
+  axisSelection.selectAll("line").attr("stroke", color);
+  axisSelection.selectAll("text").attr("fill", color);
+}
+
 // =======================================================
 // HISTOGRAM
 // =======================================================
@@ -105,8 +115,10 @@ export function plotHistogram(data, options = {}, selector) {
     .attr("height", (d) => height - y(d.length))
     .attr("fill", config.color);
 
-  g.append("g").attr("transform", `translate(0,${height})`).call(axisBottom(x));
-  g.append("g").call(axisLeft(y));
+  const xAxis = g.append("g").attr("transform", `translate(0,${height})`).call(axisBottom(x));
+  const yAxis = g.append("g").call(axisLeft(y));
+  styleAxis(xAxis, config.xAxisColor || config.axisColor);
+  styleAxis(yAxis, config.yAxisColor || config.axisColor);
 }
 
 // =======================================================
@@ -161,8 +173,10 @@ export function plotBoxplot(data, options = {}, selector) {
       .attr("stroke", config.color);
   });
 
-  g.append("g").attr("transform", `translate(0,${height})`).call(axisBottom(x));
-  g.append("g").call(axisLeft(y));
+  const xAxis = g.append("g").attr("transform", `translate(0,${height})`).call(axisBottom(x));
+  const yAxis = g.append("g").call(axisLeft(y));
+  styleAxis(xAxis, config.xAxisColor || config.axisColor);
+  styleAxis(yAxis, config.yAxisColor || config.axisColor);
 }
 
 // =======================================================
@@ -187,8 +201,10 @@ export function plotScatter(xData, yData, options = {}, selector) {
     .attr("r", options.size || 4)
     .attr("fill", config.color);
 
-  g.append("g").attr("transform", `translate(0,${height})`).call(axisBottom(x));
-  g.append("g").call(axisLeft(y));
+  const xAxis = g.append("g").attr("transform", `translate(0,${height})`).call(axisBottom(x));
+  const yAxis = g.append("g").call(axisLeft(y));
+  styleAxis(xAxis, config.xAxisColor || config.axisColor);
+  styleAxis(yAxis, config.yAxisColor || config.axisColor);
 }
 
 // =======================================================
@@ -227,8 +243,10 @@ export function plotLine(xData, yData, options = {}, selector) {
       .attr("fill", config.color);
   }
 
-  g.append("g").attr("transform", `translate(0,${height})`).call(axisBottom(x));
-  g.append("g").call(axisLeft(y));
+  const xAxis = g.append("g").attr("transform", `translate(0,${height})`).call(axisBottom(x));
+  const yAxis = g.append("g").call(axisLeft(y));
+  styleAxis(xAxis, config.xAxisColor || config.axisColor);
+  styleAxis(yAxis, config.yAxisColor || config.axisColor);
 }
 
 // =======================================================
@@ -254,8 +272,10 @@ export function plotBar(categories, values, options = {}, selector) {
     .attr("height", (d) => height - y(d))
     .attr("fill", config.color);
 
-  g.append("g").attr("transform", `translate(0,${height})`).call(axisBottom(x));
-  g.append("g").call(axisLeft(y));
+  const xAxis = g.append("g").attr("transform", `translate(0,${height})`).call(axisBottom(x));
+  const yAxis = g.append("g").call(axisLeft(y));
+  styleAxis(xAxis, config.xAxisColor || config.axisColor);
+  styleAxis(yAxis, config.yAxisColor || config.axisColor);
 }
 
 // =======================================================
@@ -331,8 +351,10 @@ export function plotHeatmap(matrix, options = {}, selector) {
       .text(d => d.value.toFixed(2));
   }
 
-  g.append("g").attr("transform", `translate(0,${height})`).call(axisBottom(x));
-  g.append("g").call(axisLeft(y));
+  const xAxis = g.append("g").attr("transform", `translate(0,${height})`).call(axisBottom(x));
+  const yAxis = g.append("g").call(axisLeft(y));
+  styleAxis(xAxis, config.xAxisColor || config.axisColor);
+  styleAxis(yAxis, config.yAxisColor || config.axisColor);
 }
 
 // =======================================================
@@ -384,8 +406,10 @@ export function plotViolin(groups, options = {}, selector) {
       .attr("d", mirrored);
   });
 
-  g.append("g").attr("transform", `translate(0,${height})`).call(axisBottom(x));
-  g.append("g").call(axisLeft(y));
+  const xAxis = g.append("g").attr("transform", `translate(0,${height})`).call(axisBottom(x));
+  const yAxis = g.append("g").call(axisLeft(y));
+  styleAxis(xAxis, config.xAxisColor || config.axisColor);
+  styleAxis(yAxis, config.yAxisColor || config.axisColor);
 }
 
 // =======================================================
@@ -413,8 +437,10 @@ export function plotDensity(data, options = {}, selector) {
     .attr("stroke-width", 2)
     .attr("d", path);
 
-  g.append("g").attr("transform", `translate(0,${height})`).call(axisBottom(x));
-  g.append("g").call(axisLeft(y));
+  const xAxis = g.append("g").attr("transform", `translate(0,${height})`).call(axisBottom(x));
+  const yAxis = g.append("g").call(axisLeft(y));
+  styleAxis(xAxis, config.xAxisColor || config.axisColor);
+  styleAxis(yAxis, config.yAxisColor || config.axisColor);
 }
 
 function kernelDensityEstimator(kernel, X) {
@@ -442,7 +468,6 @@ export function plotQQ(data, options = {}, selector) {
   plotScatter(theoretical, sorted, options, selector);
 }
 
-// Z-score inverse (approx)
 function normalQuantile(p) {
   const a1 = -39.6968302866538, a2 = 220.946098424521, a3 = -275.928510446969;
   const a4 = 138.357751867269, a5 = -30.6647980661472, a6 = 2.50662827745924;
@@ -501,10 +526,11 @@ export function plotParallel(data, dimensions, options = {}, selector) {
     .attr("opacity", 0.6);
 
   dimensions.forEach(dim => {
-    g.append("g")
+    const axis = g.append("g")
       .attr("transform", `translate(${x(dim)},0)`)
-      .call(axisLeft(y[dim]))
-      .append("text")
+      .call(axisLeft(y[dim]));
+    styleAxis(axis, config.yAxisColor || config.axisColor);
+    axis.append("text")
       .style("text-anchor", "middle")
       .attr("y", -9)
       .text(dim);
@@ -604,6 +630,8 @@ export function plotMultiline(series, options = {}, selector) {
     });
   }
 
-  g.append("g").attr("transform", `translate(0,${height})`).call(axisBottom(x));
-  g.append("g").call(axisLeft(y));
+  const xAxis = g.append("g").attr("transform", `translate(0,${height})`).call(axisBottom(x));
+  const yAxis = g.append("g").call(axisLeft(y));
+  styleAxis(xAxis, config.xAxisColor || config.axisColor);
+  styleAxis(yAxis, config.yAxisColor || config.axisColor);
 }
