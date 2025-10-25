@@ -46,7 +46,7 @@ datly is a comprehensive JavaScript library that brings powerful data analysis, 
 <script src="https://unpkg.com/datly"></script>
 <script>
   const result = datly.mean([1, 2, 3, 4, 5]);
-  console.log(result);
+  console.log(result.value); // Access the mean value directly
 </script>
 ```
 
@@ -54,7 +54,14 @@ datly is a comprehensive JavaScript library that brings powerful data analysis, 
 
 ```javascript
 import * as datly from 'datly';
+
+// All functions return JavaScript objects
+const stats = datly.describe([1, 2, 3, 4, 5]);
+console.log(stats.mean); // Direct property access
+console.log(stats.std);  // No parsing needed
 ```
+
+> **Note**: All datly functions return JavaScript objects (not strings or YAML). This means you can directly access properties like `result.value`, `result.mean`, `dataframe.columns`, etc.
 
 ---
 
@@ -62,20 +69,22 @@ import * as datly from 'datly';
 
 ### Output Format
 
-All analysis functions return results in a structured YAML-like text format that can be parsed or displayed:
+All analysis functions return results as JavaScript objects with a consistent structure:
 
-```yaml
-type: statistic
-name: mean
-value: 3
-n: 5
+```javascript
+{
+  type: "statistic",
+  name: "mean",
+  value: 3,
+  n: 5
+}
 ```
 
 This format makes it easy to:
-- Display results in a readable format
-- Parse results programmatically
-- Store analysis outputs as text
-- Share results across different systems
+- Access results programmatically with dot notation (e.g., `result.value`)
+- Integrate with JavaScript applications
+- Serialize to JSON for storage or transmission
+- Display results in web interfaces
 
 ---
 
@@ -93,21 +102,16 @@ Creates a dataframe from CSV content.
   - `skipEmptyLines`: Skip empty lines (default: true)
 
 **Returns:**
-```yaml
-type: dataframe
-columns:
-  - name
-  - age
-  - salary
-data:
-  - name: alice
-    age: 30
-    salary: 50000
-  - name: bob
-    age: 25
-    salary: 45000
-n_rows: 2
-n_cols: 3
+```javascript
+{
+  type: "dataframe",
+  columns: ["name", "age", "salary"],
+  data: [
+    { name: "alice", age: 30, salary: 50000 },
+    { name: "bob", age: 25, salary: 45000 }
+  ],
+  shape: [2, 3]
+}
 ```
 
 **Example:**
@@ -132,21 +136,16 @@ Creates a dataframe from JSON data. Accepts multiple formats:
 - String (parsed as JSON)
 
 **Returns:**
-```yaml
-type: dataframe
-columns:
-  - name
-  - age
-  - department
-data:
-  - name: alice
-    age: 30
-    department: engineering
-  - name: bob
-    age: 25
-    department: sales
-n_rows: 2
-n_cols: 3
+```javascript
+{
+  type: "dataframe",
+  columns: ["name", "age", "department"],
+  data: [
+    { name: "alice", age: 30, department: "engineering" },
+    { name: "bob", age: 25, department: "sales" }
+  ],
+  shape: [2, 3]
+}
 ```
 
 **Example:**
@@ -180,21 +179,16 @@ Creates a dataframe from an array of objects.
 - `array`: Array of objects with consistent keys
 
 **Returns:**
-```yaml
-type: dataframe
-columns:
-  - product
-  - price
-  - stock
-data:
-  - product: laptop
-    price: 999
-    stock: 15
-  - product: mouse
-    price: 25
-    stock: 50
-n_rows: 2
-n_cols: 3
+```javascript
+{
+  type: "dataframe",
+  columns: ["product", "price", "stock"],
+  data: [
+    { product: "laptop", price: 999, stock: 15 },
+    { product: "mouse", price: 25, stock: 50 }
+  ],
+  shape: [2, 3]
+}
 ```
 
 **Example:**
@@ -221,34 +215,27 @@ Creates a dataframe from a single object. Can flatten nested structures.
   - `maxDepth`: Maximum depth for flattening (default: 10)
 
 **Returns (flattened):**
-```yaml
-type: dataframe
-columns:
-  - user.name
-  - user.age
-  - user.address.city
-  - user.address.country
-  - orders
-  - orders.id
-  - orders.total
-data:
-  - user.name: alice
-    user.age: 30
-    user.address.city: new york
-    user.address.country: usa
-    orders:
-      - id: 1
-        total: 150
-      - id: 2
-        total: 200
-    orders.id:
-      - 1
-      - 2
-    orders.total:
-      - 150
-      - 200
-n_rows: 1
-n_cols: 7
+```javascript
+{
+  type: "dataframe",
+  columns: [
+    "user.name", "user.age", "user.address.city",
+    "user.address.country", "orders"
+  ],
+  data: [
+    {
+      "user.name": "alice",
+      "user.age": 30,
+      "user.address.city": "new york",
+      "user.address.country": "usa",
+      "orders": [
+        { id: 1, total: 150 },
+        { id: 2, total: 200 }
+      ]
+    }
+  ],
+  shape: [1, 5]
+}
 ```
 
 **Example:**
@@ -351,18 +338,16 @@ console.log(subset);
 Returns the first n rows.
 
 **Returns:**
-```yaml
-type: dataframe
-columns:
-  - name
-  - age
-data:
-  - name: alice
-    age: 30
-  - name: bob
-    age: 25
-n_rows: 2
-n_cols: 2
+```javascript
+{
+  type: "dataframe",
+  columns: ["name", "age"],
+  data: [
+    { name: "alice", age: 30 },
+    { name: "bob", age: 25 }
+  ],
+  shape: [2, 2]
+}
 ```
 
 **Example:**
@@ -385,754 +370,318 @@ const last3 = datly.df_tail(df, 3);
 
 ---
 
-### `df_info(dataframe)`
+## Descriptive Statistics
 
-Returns detailed information about the dataframe structure.
+### Basic Statistical Functions
 
-**Returns:**
-```yaml
-n_rows: 100
-n_cols: 5
-columns:
-  - name
-  - age
-  - salary
-  - department
-  - active
-types:
-  name: string
-  age: number
-  salary: number
-  department: string
-  active: boolean
-null_counts:
-  name: 0
-  age: 2
-  salary: 1
-unique_counts:
-  name: 95
-  age: 45
-```
+All statistical functions return JavaScript objects with consistent structure.
 
-**Example:**
-```javascript
-const df = datly.df_from_json(employeeData);
-const info = datly.df_info(df);
-console.log(info);
-```
+#### `mean(array)`
 
----
-
-## Data Selection
-
-### `df_select(dataframe, columns)`
-
-Selects specific columns.
-
-**Returns:**
-```yaml
-type: dataframe
-columns:
-  - name
-  - salary
-data:
-  - name: alice
-    salary: 50000
-n_rows: 1
-n_cols: 2
-```
-
-**Example:**
-```javascript
-const df = datly.df_from_json(employeeData);
-const subset = datly.df_select(df, ['name', 'salary']);
-```
-
----
-
-### `df_filter(dataframe, predicate)`
-
-Filters rows based on a predicate function.
-
-**Returns:**
-```yaml
-type: dataframe
-columns:
-  - name
-  - age
-  - salary
-data:
-  - name: alice
-    age: 30
-    salary: 50000
-  - name: charlie
-    age: 35
-    salary: 60000
-n_rows: 2
-n_cols: 3
-```
-
-**Example:**
-```javascript
-const df = datly.df_from_json(employeeData);
-
-// Filter employees older than 28
-const filtered = datly.df_filter(df, row => row.age > 28);
-
-// Multiple conditions
-const highEarners = datly.df_filter(df, row =>
-  row.salary > 55000 && row.department === 'Engineering'
-);
-```
-
----
-
-### `df_sort(dataframe, column, order = 'asc')`
-
-Sorts dataframe by a column.
-
-**Example:**
-```javascript
-const df = datly.df_from_json(employeeData);
-
-// Sort ascending
-const sortedAsc = datly.df_sort(df, 'age', 'asc');
-
-// Sort descending
-const sortedDesc = datly.df_sort(df, 'salary', 'desc');
-```
-
----
-
-## Data Cleaning
-
-### `df_dropna(dataframe, subset = null)`
-
-Removes rows with null/undefined values.
-
-**Example:**
-```javascript
-const df = datly.df_from_json([
-  { name: 'Alice', age: 30, email: 'alice@example.com' },
-  { name: 'Bob', age: null, email: 'bob@example.com' },
-  { name: 'Charlie', age: 35, email: null }
-]);
-
-// Drop rows with any null values
-const cleaned = datly.df_dropna(df);
-
-// Drop rows with null in specific columns
-const cleanedPartial = datly.df_dropna(df, ['age']);
-```
-
----
-
-### `df_fillna(dataframe, value, subset = null)`
-
-Fills null/undefined values with a specified value.
-
-**Example:**
-```javascript
-const df = datly.df_from_json([
-  { name: 'Alice', age: 30, score: 85 },
-  { name: 'Bob', age: null, score: 90 },
-  { name: 'Charlie', age: 35, score: null }
-]);
-
-// Fill all nulls with 0
-const filled = datly.df_fillna(df, 0);
-
-// Fill specific columns
-const filledPartial = datly.df_fillna(df, 0, ['score']);
-```
-
----
-
-### `df_drop(dataframe, columns)`
-
-Removes specified columns.
-
-**Example:**
-```javascript
-const df = datly.df_from_json(employeeData);
-
-// Drop single column
-const dropped = datly.df_drop(df, 'email');
-
-// Drop multiple columns
-const droppedMultiple = datly.df_drop(df, ['email', 'phone', 'address']);
-```
-
----
-
-### `df_rename(dataframe, renameMap)`
-
-Renames columns.
-
-**Example:**
-```javascript
-const df = datly.df_from_json([
-  { name: 'Alice', age: 30, salary: 50000 }
-]);
-
-const renamed = datly.df_rename(df, {
-  name: 'employee_name',
-  age: 'employee_age',
-  salary: 'monthly_salary'
-});
-```
-
----
-
-## Advanced Operations
-
-### `df_concat(...dataframes)`
-
-Concatenates multiple dataframes vertically.
-
-**Example:**
-```javascript
-const df1 = datly.df_from_json([
-  { name: 'Alice', age: 30 }
-]);
-
-const df2 = datly.df_from_json([
-  { name: 'Bob', age: 25 }
-]);
-
-const combined = datly.df_concat(df1, df2);
-```
-
----
-
-### `df_merge(dataframe1, dataframe2, options)`
-
-Merges two dataframes (SQL-style join).
-
-**Parameters:**
-- `options`:
-  - `on`: Column name(s) to join on
-  - `how`: 'inner', 'left', 'right', or 'outer'
-
-**Example:**
-```javascript
-const employees = datly.df_from_json([
-  { id: 1, name: 'Alice', dept: 'Engineering' },
-  { id: 2, name: 'Bob', dept: 'Sales' }
-]);
-
-const salaries = datly.df_from_json([
-  { id: 1, salary: 50000 },
-  { id: 2, salary: 45000 }
-]);
-
-// Inner join
-const merged = datly.df_merge(employees, salaries, {
-  on: 'id',
-  how: 'inner'
-});
-
-// Multiple keys
-const merged2 = datly.df_merge(df1, df2, {
-  on: ['id', 'year'],
-  how: 'left'
-});
-```
-
----
-
-### `df_groupby(dataframe, keys)`
-
-Groups dataframe by columns.
+Calculates the arithmetic mean.
 
 **Returns:**
 ```javascript
 {
-  keys: ['department'],
-  groups: Map { ... }
+  type: "statistic",
+  name: "mean",
+  value: 3,
+  n: 5
 }
 ```
 
 **Example:**
 ```javascript
-const df = datly.df_from_json([
-  { name: 'Alice', department: 'Engineering', salary: 50000 },
-  { name: 'Bob', department: 'Sales', salary: 45000 },
-  { name: 'Charlie', department: 'Engineering', salary: 60000 }
-]);
-
-// Group by single column
-const grouped = datly.df_groupby(df, 'department');
-
-// Group by multiple columns
-const multiGrouped = datly.df_groupby(df, ['department', 'level']);
+const data = [1, 2, 3, 4, 5];
+const result = datly.mean(data);
+console.log(result.value); // 3
 ```
 
----
-
-### `df_aggregate(grouped, aggMap)`
-
-Applies aggregation functions to grouped data.
-
-**Example:**
-```javascript
-const df = datly.df_from_json(employeeData);
-const grouped = datly.df_groupby(df, 'department');
-
-// Average salary and age by department
-const aggregated = datly.df_aggregate(grouped, {
-  salary: arr => arr.reduce((a, b) => a + b, 0) / arr.length,
-  age: arr => arr.reduce((a, b) => a + b, 0) / arr.length
-});
-
-// Custom aggregations
-const customAgg = datly.df_aggregate(grouped, {
-  salary: arr => Math.max(...arr),
-  age: arr => Math.min(...arr)
-});
-```
-
----
-
-## Utility Functions
-
-### `df_apply(dataframe, column, function)`
-
-Applies a function to transform a column.
-
-**Example:**
-```javascript
-const df = datly.df_from_json([
-  { name: 'Alice', salary: 50000 },
-  { name: 'Bob', salary: 45000 }
-]);
-
-// Increase all salaries by 10%
-const increased = datly.df_apply(df, 'salary', val => val * 1.1);
-
-// Access full row
-const withBonus = datly.df_apply(df, 'salary', (val, row) => {
-  return row.name === 'Alice' ? val * 1.2 : val * 1.1;
-});
-```
-
----
-
-### `df_add_column(dataframe, columnName, function)`
-
-Adds a new derived column.
-
-**Example:**
-```javascript
-const df = datly.df_from_json([
-  { name: 'Alice', salary: 50000, bonus: 5000 },
-  { name: 'Bob', salary: 45000, bonus: 3000 }
-]);
-
-// Add total compensation
-const withTotal = datly.df_add_column(df, 'total_comp',
-  row => row.salary + row.bonus
-);
-
-// Add calculated column
-const withTax = datly.df_add_column(df, 'tax',
-  row => row.salary * 0.25
-);
-```
-
----
-
-### `df_unique(dataframe, column)`
-
-Returns unique values from a column.
-
-**Example:**
-```javascript
-const df = datly.df_from_json(employeeData);
-const departments = datly.df_unique(df, 'department');
-console.log(departments); // ['Engineering', 'Sales', 'HR']
-```
-
----
-
-### `df_sample(dataframe, n = 5, seed = null)`
-
-Returns a random sample of rows.
-
-**Example:**
-```javascript
-const df = datly.df_from_json(largeDataset);
-
-// Random sample
-const sample = datly.df_sample(df, 10);
-
-// Reproducible with seed
-const reproducible = datly.df_sample(df, 10, 42);
-```
-
----
-
-### `df_to_csv(dataframe, delimiter = ',')`
-
-Exports dataframe to CSV string.
-
-**Returns:**
-```csv
-name,age,salary
-Alice,30,50000
-Bob,25,45000
-```
-
-**Example:**
-```javascript
-const df = datly.df_from_json(employeeData);
-
-// Export to CSV
-const csv = datly.df_to_csv(df);
-
-// Custom delimiter
-const tsv = datly.df_to_csv(df, '\t');
-```
-
----
-
-## Working with Nested Data
-
-### `df_explode(dataframe, column)`
-
-Expands array values into multiple rows.
-
-**Example:**
-```javascript
-const df = datly.df_from_json([
-  { user: 'Alice', order_ids: [1, 2, 3] },
-  { user: 'Bob', order_ids: [4] }
-]);
-
-// Explode order_ids
-const exploded = datly.df_explode(df, 'order_ids');
-// Alice appears 3 times (one per order)
-```
-
----
-
-### `df_find_columns(dataframe, pattern)`
-
-Searches for columns matching a pattern.
-
-**Returns:**
-```yaml
-pattern: user
-matches_found: 3
-columns:
-  - user.name
-  - user.age
-  - user.email
-```
-
-**Example:**
-```javascript
-const user = {
-  name: 'Alice',
-  address: {
-    street: '123 Main St',
-    city: 'NYC'
-  }
-};
-
-const df = datly.df_from_object(user);
-
-// Find address columns
-const addressCols = datly.df_find_columns(df, 'address');
-```
-
----
-
-## Descriptive Statistics
-
-### `mean(array)`
-
-Calculates the arithmetic mean of an array of numbers.
-
-**Returns:**
-```yaml
-type: statistic
-name: mean
-n: 5
-value: 3
-```
-
-**Example:**
-```javascript
-datly.mean([1, 2, 3, 4, 5]); // 3
-```
-
-### `median(array)`
+#### `median(array)`
 
 Calculates the median value.
 
 **Returns:**
-```yaml
-type: statistic
-name: median
-n: 5
-value: 3
+```javascript
+{
+  type: "statistic",
+  name: "median",
+  value: 3,
+  n: 5
+}
 ```
 
 **Example:**
 ```javascript
-datly.median([1, 2, 3, 4, 5]); // 3
-datly.median([1, 2, 3, 4]); // 2.5
+const data = [1, 2, 3, 4, 5];
+const result = datly.median(data);
+console.log(result.value); // 3
 ```
 
-### `variance(array, sample = true)`
+#### `variance(array)`
 
-Calculates the variance.
+Calculates the sample variance.
+
+**Returns:**
+```javascript
+{
+  type: "statistic",
+  name: "variance",
+  value: 2.5,
+  n: 5
+}
+```
+
+**Example:**
+```javascript
+const data = [1, 2, 3, 4, 5];
+const result = datly.variance(data);
+console.log(result.value); // 2.5
+```
+
+#### `std(array)`
+
+Calculates the sample standard deviation.
+
+**Returns:**
+```javascript
+{
+  type: "statistic",
+  name: "standard_deviation",
+  value: 1.58,
+  n: 5
+}
+```
+
+**Example:**
+```javascript
+const data = [1, 2, 3, 4, 5];
+const result = datly.std(data);
+console.log(result.value); // 1.58
+```
+
+#### `skewness(array)`
+
+Calculates the skewness (asymmetry measure).
+
+**Returns:**
+```javascript
+{
+  type: "statistic",
+  name: "skewness",
+  value: 0,
+  n: 5,
+  interpretation: "symmetric"
+}
+```
+
+**Example:**
+```javascript
+const data = [1, 2, 3, 4, 5];
+const result = datly.skewness(data);
+console.log(result.interpretation); // "symmetric"
+```
+
+#### `kurtosis(array)`
+
+Calculates the kurtosis (tail heaviness measure).
+
+**Returns:**
+```javascript
+{
+  type: "statistic",
+  name: "kurtosis",
+  value: -1.2,
+  n: 5,
+  interpretation: "platykurtic"
+}
+```
+
+**Example:**
+```javascript
+const data = [1, 2, 3, 4, 5];
+const result = datly.kurtosis(data);
+console.log(result.interpretation); // "platykurtic"
+```
+
+#### `percentile(array, p)`
+
+Calculates the p-th percentile.
 
 **Parameters:**
 - `array`: Array of numbers
-- `sample`: If true, uses sample variance (n-1); if false, uses population variance (n)
+- `p`: Percentile (0-100)
 
 **Returns:**
-```yaml
-type: statistic
-name: variance
-sample: true
-n: 5
-value: 2.5
+```javascript
+{
+  type: "statistic",
+  name: "percentile",
+  percentile: 75,
+  value: 4,
+  n: 5
+}
 ```
 
 **Example:**
 ```javascript
-datly.variance([1, 2, 3, 4, 5]); // Sample variance
-datly.variance([1, 2, 3, 4, 5], false); // Population variance
+const data = [1, 2, 3, 4, 5];
+const result = datly.percentile(data, 75);
+console.log(result.value); // 4
 ```
 
-### `stddeviation(array, sample = true)`
+#### `quantile(array, q)`
 
-Calculates the standard deviation.
+Calculates the q-th quantile.
+
+**Parameters:**
+- `array`: Array of numbers
+- `q`: Quantile (0-1)
+
+**Example:**
+```javascript
+const data = [1, 2, 3, 4, 5];
+const result = datly.quantile(data, 0.75);
+console.log(result.value); // 4
+```
+
+#### `describe(array)`
+
+Provides comprehensive descriptive statistics.
 
 **Returns:**
-```yaml
-type: statistic
-name: std_deviation
-sample: true
-n: 5
-value: 1.5811388300841898
+```javascript
+{
+  type: "descriptive_statistics",
+  n: 5,
+  mean: 3,
+  median: 3,
+  std: 1.58,
+  variance: 2.5,
+  min: 1,
+  max: 5,
+  q1: 2,
+  q3: 4,
+  iqr: 2,
+  skewness: 0,
+  kurtosis: -1.2
+}
 ```
 
 **Example:**
 ```javascript
-datly.stddeviation([1, 2, 3, 4, 5]);
-```
-
-### `minv(array)`
-
-Returns the minimum value.
-
-**Returns:**
-```yaml
-type: statistic
-name: min
-value: 1
-```
-
-### `maxv(array)`
-
-Returns the maximum value.
-
-**Returns:**
-```yaml
-type: statistic
-name: max
-value: 5
-```
-
-### `quantile(array, q)`
-
-Calculates the q-th quantile (0 ≤ q ≤ 1).
-
-**Returns:**
-```yaml
-type: statistic
-name: quantile
-q: 0.25
-n: 100
-value: 25.5
-```
-
-**Example:**
-```javascript
-datly.quantile([1, 2, 3, 4, 5], 0.25); // First quartile
-datly.quantile([1, 2, 3, 4, 5], 0.5);  // Median
-datly.quantile([1, 2, 3, 4, 5], 0.75); // Third quartile
-```
-
-### `skewness(array)`
-
-Calculates the skewness (measure of asymmetry).
-
-**Returns:**
-```yaml
-type: statistic
-name: skewness
-value: 0
-```
-
-**Example:**
-```javascript
-datly.skewness([1, 2, 3, 4, 5]); // ~0 for symmetric data
-```
-
-### `kurtosis(array)`
-
-Calculates the kurtosis (measure of tailedness).
-
-**Returns:**
-```yaml
-type: statistic
-name: kurtosis
-value: -1.2
-```
-
-**Example:**
-```javascript
-datly.kurtosis([1, 2, 3, 4, 5]);
+const data = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+const result = datly.describe(data);
+console.log(result.mean); // Access mean directly
+console.log(result.std);  // Access standard deviation
 ```
 
 ---
 
 ## Exploratory Data Analysis
 
-### `df_describe(data)`
+### `eda_overview(data)`
 
-Generates comprehensive descriptive statistics for a dataset.
+Provides a comprehensive overview of a dataset.
+
+**Parameters:**
+- `data`: Array of objects or 2D array
 
 **Returns:**
-```yaml
-type: describe
-columns:
-  age:
-    dtype: number
-    count: 100
-    missing: 0
-    mean: 35.5
-    std: 10.2
-    min: 18
-    q1: 28
-    median: 35
-    q3: 43
-    max: 65
-    skewness: 0.15
-    kurtosis: -0.5
-  name:
-    dtype: string
-    count: 100
-    missing: 2
-    unique: 95
-    top:
-      - value: john
-        freq: 3
-      - value: alice
-        freq: 2
+```javascript
+{
+  type: "eda_overview",
+  n_observations: 100,
+  n_variables: 5,
+  variables: [
+    {
+      name: "age",
+      type: "numeric",
+      missing: 0,
+      unique: 25,
+      mean: 35.5,
+      std: 12.3
+    },
+    {
+      name: "department",
+      type: "categorical",
+      missing: 2,
+      unique: 4,
+      mode: "engineering",
+      frequency: 45
+    }
+  ],
+  memory_usage: "2.1kb"
+}
+```
+
+**Example:**
+```javascript
+const employees = [
+  { name: 'Alice', age: 30, salary: 50000, department: 'Engineering' },
+  { name: 'Bob', age: 25, salary: 45000, department: 'Sales' },
+  { name: 'Charlie', age: 35, salary: 60000, department: 'Engineering' }
+];
+
+const overview = datly.eda_overview(employees);
+console.log(overview);
+```
+
+### `missing_values(data)`
+
+Analyzes missing values in the dataset.
+
+**Returns:**
+```javascript
+{
+  type: "missing_values_analysis",
+  total_missing: 15,
+  missing_percentage: 7.5,
+  variables: [
+    { name: "age", missing: 0, percentage: 0 },
+    { name: "salary", missing: 5, percentage: 25 },
+    { name: "department", missing: 10, percentage: 50 }
+  ]
+}
 ```
 
 **Example:**
 ```javascript
 const data = [
-  { age: 25, salary: 50000, dept: 'IT' },
-  { age: 30, salary: 60000, dept: 'HR' },
-  { age: 35, salary: 70000, dept: 'IT' }
+  { age: 30, salary: 50000, department: 'Engineering' },
+  { age: null, salary: 45000, department: null },
+  { age: 35, salary: null, department: 'Engineering' }
 ];
 
-const description = datly.df_describe(data);
-console.log(description);
+const missing = datly.missing_values(data);
+console.log(missing);
 ```
 
-### `df_missing_report(data)`
+### `outliers_zscore(array, threshold = 3)`
 
-Analyzes missing values in the dataset.
-
-**Returns:**
-```yaml
-type: missing_report
-rows:
-  - column: age
-    missing: 5
-    missing_rate: 0.05
-  - column: salary
-    missing: 0
-    missing_rate: 0
-  - column: name
-    missing: 10
-    missing_rate: 0.1
-```
-
-**Example:**
-```javascript
-const report = datly.df_missing_report(data);
-```
-
-### `df_corr(data, method = 'pearson')`
-
-Calculates correlation matrix between numeric columns.
+Detects outliers using Z-score method.
 
 **Parameters:**
-- `data`: Array of objects
-- `method`: 'pearson' or 'spearman'
+- `array`: Array of numbers
+- `threshold`: Z-score threshold (default: 3)
 
 **Returns:**
-```yaml
-type: correlation_matrix
-method: pearson
-matrix:
-  age:
-    age: 1
-    salary: 0.85
-    experience: 0.92
-  salary:
-    age: 0.85
-    salary: 1
-    experience: 0.78
-  experience:
-    age: 0.92
-    salary: 0.78
-    experience: 1
+```javascript
+{
+  type: "outlier_detection",
+  method: "zscore",
+  threshold: 3,
+  n_outliers: 2,
+  outlier_indices: [5, 12],
+  outlier_values: [200, 30]
+}
 ```
 
 **Example:**
 ```javascript
-const corr = datly.df_corr(data, 'pearson');
-const spearman = datly.df_corr(data, 'spearman');
-```
-
-### `eda_overview(data)`
-
-Generates a comprehensive EDA report combining describe, missing values, and correlation.
-
-**Returns:**
-```yaml
-type: eda
-summary:
-  age:
-    dtype: number
-    count: 100
-    mean: 35.5
-    std: 10.2
-    ...
-missing:
-  - column: age
-    missing: 5
-    missing_rate: 0.05
-correlation:
-  age:
-    age: 1
-    salary: 0.85
-```
-
-**Example:**
-```javascript
-const overview = datly.eda_overview(data);
+const data = [10, 12, 14, 15, 16, 200, 18, 19, 20, 21, 22, 23, 30];
+const outliers = datly.outliers_zscore(data, 3);
+console.log(outliers);
 ```
 
 ---
@@ -1141,239 +690,156 @@ const overview = datly.eda_overview(data);
 
 ### Normal Distribution
 
-#### `normal_pdf(x, mu = 0, sigma = 1)`
+#### `normal_pdf(x, mean = 0, std = 1)`
 
-Probability density function of normal distribution.
+Calculates the probability density function of the normal distribution.
 
 **Returns:**
-```yaml
-type: distribution
-name: normal_pdf
-params:
-  mu: 0
-  sigma: 1
-value: 0.3989422804014327
+```javascript
+{
+  type: "probability_density",
+  distribution: "normal",
+  x: 0,
+  mean: 0,
+  std: 1,
+  pdf: 0.399
+}
 ```
 
 **Example:**
 ```javascript
-datly.normal_pdf(0); // PDF at x=0
-datly.normal_pdf([0, 1, 2], 0, 1); // PDF for multiple values
+const pdf = datly.normal_pdf(0, 0, 1);
+console.log(pdf.pdf); // 0.399
 ```
 
-#### `normal_cdf(x, mu = 0, sigma = 1)`
+#### `normal_cdf(x, mean = 0, std = 1)`
 
-Cumulative distribution function of normal distribution.
+Calculates the cumulative distribution function.
 
 **Returns:**
-```yaml
-type: distribution
-name: normal_cdf
-params:
-  mu: 0
-  sigma: 1
-value: 0.5
+```javascript
+{
+  type: "cumulative_probability",
+  distribution: "normal",
+  x: 0,
+  mean: 0,
+  std: 1,
+  cdf: 0.5
+}
 ```
 
 **Example:**
 ```javascript
-datly.normal_cdf(0); // P(X ≤ 0)
-datly.normal_cdf(1.96); // P(X ≤ 1.96) ≈ 0.975
+const cdf = datly.normal_cdf(1.96, 0, 1);
+console.log(cdf.cdf); // ~0.975
 ```
 
-#### `normal_ppf(p, mu = 0, sigma = 1)`
+### Random Sampling
 
-Percent point function (inverse CDF) of normal distribution.
+#### `random_normal(n, mean = 0, std = 1, seed = null)`
 
-**Returns:**
-```yaml
-type: distribution
-name: normal_ppf
-params:
-  mu: 0
-  sigma: 1
-value: 1.959963984540054
-```
-
-**Example:**
-```javascript
-datly.normal_ppf(0.975); // Returns ~1.96
-```
-
-### Binomial Distribution
-
-#### `binomial_pmf(k, n, p)`
-
-Probability mass function of binomial distribution.
+Generates random samples from a normal distribution.
 
 **Parameters:**
-- `k`: Number of successes (can be array)
-- `n`: Number of trials
-- `p`: Probability of success
+- `n`: Number of samples
+- `mean`: Mean of the distribution
+- `std`: Standard deviation
+- `seed`: Random seed for reproducibility
 
 **Returns:**
-```yaml
-type: distribution
-name: binomial_pmf
-params:
-  n: 10
-  p: 0.5
-value: 0.24609375
+```javascript
+{
+  type: "random_sample",
+  distribution: "normal",
+  n: 100,
+  mean: 0,
+  std: 1,
+  seed: 42,
+  sample: [0.674, -0.423, 1.764, ...],
+  sample_mean: 0.054,
+  sample_std: 0.986
+}
 ```
 
 **Example:**
 ```javascript
-datly.binomial_pmf(5, 10, 0.5); // P(X = 5)
-datly.binomial_pmf([0, 1, 2, 3], 10, 0.3); // Multiple values
-```
-
-#### `binomial_cdf(k, n, p)`
-
-Cumulative distribution function of binomial distribution.
-
-**Returns:**
-```yaml
-type: distribution
-name: binomial_cdf
-params:
-  n: 10
-  p: 0.5
-value: 0.623046875
-```
-
-### Poisson Distribution
-
-#### `poisson_pmf(k, lambda)`
-
-Probability mass function of Poisson distribution.
-
-**Returns:**
-```yaml
-type: distribution
-name: poisson_pmf
-params:
-  lambda: 3
-value: 0.22404180765538775
-```
-
-**Example:**
-```javascript
-datly.poisson_pmf(3, 3); // P(X = 3) when λ = 3
-```
-
-#### `poisson_cdf(k, lambda)`
-
-Cumulative distribution function of Poisson distribution.
-
-**Returns:**
-```yaml
-type: distribution
-name: poisson_cdf
-params:
-  lambda: 3
-value: 0.6472319374260858
+const samples = datly.random_normal(100, 0, 1, 42);
+console.log(samples.sample.length); // 100
+console.log(samples.sample_mean);   // ~0.054
 ```
 
 ---
 
 ## Hypothesis Testing
 
-### `t_test_one_sample(array, hypothesized_mean)`
+### T-Tests
+
+#### `ttest_1samp(array, popmean)`
 
 One-sample t-test.
 
-**Returns:**
-```yaml
-type: hypothesis_test
-name: one_sample_t_test
-statistic: 2.345
-df: 99
-p_value: 0.021
-mean: 105
-hypothesized_mean: 100
-```
-
-**Example:**
-```javascript
-const data = [102, 98, 105, 110, 95, 100, 108];
-datly.t_test_one_sample(data, 100);
-```
-
-### `t_test_paired(array1, array2)`
-
-Paired samples t-test.
-
-**Returns:**
-```yaml
-type: hypothesis_test
-name: paired_t_test
-statistic: 3.456
-df: 29
-p_value: 0.0018
-mean_difference: 2.5
-```
-
-**Example:**
-```javascript
-const before = [120, 115, 130, 125, 140];
-const after = [115, 110, 125, 120, 135];
-datly.t_test_paired(before, after);
-```
-
-### `t_test_independent(array1, array2, equal_var = true)`
-
-Independent samples t-test.
-
 **Parameters:**
-- `equal_var`: If true, assumes equal variances (pooled t-test); if false, uses Welch's t-test
+- `array`: Sample data
+- `popmean`: Population mean to test against
 
 **Returns:**
-```yaml
-type: hypothesis_test
-name: independent_t_test
-statistic: 2.105
-df: 48
-p_value: 0.041
-means:
-  group_a: 105.5
-  group_b: 98.3
+```javascript
+{
+  type: "hypothesis_test",
+  test: "one_sample_ttest",
+  n: 20,
+  sample_mean: 5.2,
+  population_mean: 5.0,
+  t_statistic: 1.89,
+  p_value: 0.074,
+  degrees_of_freedom: 19,
+  confidence_interval: [4.87, 5.53],
+  conclusion: "fail_to_reject_h0",
+  alpha: 0.05
+}
 ```
 
 **Example:**
 ```javascript
-const group1 = [100, 105, 110, 115, 120];
-const group2 = [95, 98, 100, 102, 105];
-datly.t_test_independent(group1, group2);
+const sample = [4.8, 5.1, 5.3, 4.9, 5.2, 5.0, 5.4, 4.7, 5.1, 5.0];
+const result = datly.ttest_1samp(sample, 5.0);
+console.log(result.p_value);    // 0.074
+console.log(result.conclusion); // "fail_to_reject_h0"
 ```
 
-### `z_test_one_sample(array, mu = 0, sigma = null, alpha = 0.05)`
+#### `ttest_ind(array1, array2)`
 
-One-sample z-test with confidence interval.
+Independent two-sample t-test.
 
 **Returns:**
-```yaml
-type: hypothesis_test
-name: one_sample_z_test
-statistic: 2.345
-p_value: 0.019
-ci_lower: 102.5
-ci_upper: 107.5
-confidence: 0.95
-extra:
-  sample_mean: 105
-  hypothesized_mean: 100
-  se: 2.13
-  sigma_used: 10
-  n: 22
-  effect_size: 0.5
+```javascript
+{
+  type: "hypothesis_test",
+  test: "independent_ttest",
+  n1: 15,
+  n2: 18,
+  mean1: 5.2,
+  mean2: 4.8,
+  t_statistic: 2.45,
+  p_value: 0.019,
+  degrees_of_freedom: 31,
+  confidence_interval: [0.067, 0.733],
+  conclusion: "reject_h0",
+  alpha: 0.05
+}
 ```
 
 **Example:**
 ```javascript
-datly.z_test_one_sample([102, 98, 105, 110], 100, 5, 0.05);
+const group1 = [5.1, 5.3, 4.9, 5.2, 5.0];
+const group2 = [4.8, 4.6, 4.9, 4.7, 4.5];
+const result = datly.ttest_ind(group1, group2);
+console.log(result.p_value < 0.05); // true (significant difference)
 ```
 
-### `anova_oneway(groups, alpha = 0.05)`
+### ANOVA
+
+#### `anova_oneway(groups)`
 
 One-way ANOVA test.
 
@@ -1381,357 +847,131 @@ One-way ANOVA test.
 - `groups`: Array of arrays, each representing a group
 
 **Returns:**
-```yaml
-type: hypothesis_test
-name: anova_oneway
-statistic: 5.678
-df:
-  between: 2
-  within: 27
-p_value: 0.009
-confidence: 0.95
-extra:
-  group_means:
-    - 102.5
-    - 108.3
-    - 115.7
-  grand_mean: 108.8
-  ssb: 450.5
-  ssw: 890.2
+```javascript
+{
+  type: "hypothesis_test",
+  test: "one_way_anova",
+  n_groups: 3,
+  total_n: 45,
+  f_statistic: 8.76,
+  p_value: 0.001,
+  between_groups_df: 2,
+  within_groups_df: 42,
+  total_df: 44,
+  between_groups_ss: 125.4,
+  within_groups_ss: 301.2,
+  total_ss: 426.6,
+  conclusion: "reject_h0",
+  alpha: 0.05
+}
 ```
 
 **Example:**
 ```javascript
-const group1 = [100, 105, 110];
-const group2 = [108, 112, 115];
-const group3 = [115, 120, 125];
-datly.anova_oneway([group1, group2, group3]);
+const group1 = [23, 25, 28, 30, 32];
+const group2 = [18, 20, 22, 24, 26];
+const group3 = [15, 17, 19, 21, 23];
+
+const result = datly.anova_oneway([group1, group2, group3]);
+console.log(result);
 ```
 
-### `chi_square_independence(observed, alpha = 0.05)`
+### Normality Tests
 
-Chi-square test for independence (contingency table).
-
-**Parameters:**
-- `observed`: 2D array (contingency table)
-
-**Returns:**
-```yaml
-type: hypothesis_test
-name: chi_square_independence
-statistic: 8.456
-df: 2
-p_value: 0.015
-confidence: 0.95
-extra:
-  observed:
-    - - 10
-      - 20
-      - 30
-    - - 15
-      - 25
-      - 35
-  expected:
-    - - 12.5
-      - 22.5
-      - 32.5
-    - - 12.5
-      - 22.5
-      - 32.5
-  dof: 2
-```
-
-**Example:**
-```javascript
-const table = [
-  [10, 20, 30],
-  [15, 25, 35]
-];
-datly.chi_square_independence(table);
-```
-
-### `chi_square_goodness(observed, expected, alpha = 0.05)`
-
-Chi-square goodness of fit test.
-
-**Returns:**
-```yaml
-type: hypothesis_test
-name: chi_square_goodness_of_fit
-statistic: 3.456
-df: 3
-p_value: 0.327
-confidence: 0.95
-extra:
-  observed:
-    - 45
-    - 55
-    - 48
-    - 52
-  expected:
-    - 50
-    - 50
-    - 50
-    - 50
-  dof: 3
-```
-
-**Example:**
-```javascript
-const observed = [45, 55, 48, 52];
-const expected = [50, 50, 50, 50];
-datly.chi_square_goodness(observed, expected);
-```
-
-### `shapiro_wilk(array)`
+#### `shapiro_wilk(array)`
 
 Shapiro-Wilk test for normality.
 
 **Returns:**
 ```yaml
 type: hypothesis_test
-name: shapiro_wilk
-statistic: 0.987
+test: shapiro_wilk
 n: 50
-note: approximation; w > 0.9 suggests normality
+w_statistic: 0.973
+p_value: 0.284
+conclusion: fail_to_reject_h0
+interpretation: data_appears_normal
+alpha: 0.05
 ```
 
 **Example:**
 ```javascript
-datly.shapiro_wilk([1.2, 2.3, 1.8, 2.1, 1.9, 2.0]);
-```
-
-### `jarque_bera(array)`
-
-Jarque-Bera test for normality.
-
-**Returns:**
-```yaml
-type: hypothesis_test
-name: jarque_bera
-statistic: 2.345
-n: 100
-df: 2
-note: tests normality; low p-value rejects normality
-```
-
-### `levene_test(groups)`
-
-Levene's test for homogeneity of variance.
-
-**Returns:**
-```yaml
-type: hypothesis_test
-name: levene_test
-statistic: 1.234
-df_between: 2
-df_within: 27
-note: tests homogeneity of variance
-```
-
-**Example:**
-```javascript
-const g1 = [1, 2, 3, 4, 5];
-const g2 = [2, 3, 4, 5, 6];
-const g3 = [3, 4, 5, 6, 7];
-datly.levene_test([g1, g2, g3]);
-```
-
-### `kruskal_wallis(groups)`
-
-Kruskal-Wallis H-test (non-parametric alternative to ANOVA).
-
-**Returns:**
-```yaml
-type: hypothesis_test
-name: kruskal_wallis
-statistic: 8.765
-df: 2
-note: non-parametric alternative to anova
-```
-
-### `mann_whitney(array1, array2)`
-
-Mann-Whitney U test (non-parametric alternative to t-test).
-
-**Returns:**
-```yaml
-type: hypothesis_test
-name: mann_whitney_u
-statistic: 45
-z_score: -1.234
-p_value: 0.217
-note: non-parametric alternative to t-test
-```
-
-### `wilcoxon_signed_rank(array1, array2)`
-
-Wilcoxon signed-rank test (non-parametric paired test).
-
-**Returns:**
-```yaml
-type: hypothesis_test
-name: wilcoxon_signed_rank
-statistic: 28
-z_score: 1.567
-p_value: 0.117
-n: 20
-```
-
-### Confidence Intervals
-
-#### `confidence_interval_mean(array, confidence = 0.95)`
-
-Confidence interval for the mean.
-
-**Returns:**
-```yaml
-type: confidence_interval
-parameter: mean
-confidence: 0.95
-n: 50
-mean: 102.5
-lower: 98.3
-upper: 106.7
-margin: 4.2
-```
-
-#### `confidence_interval_proportion(successes, n, confidence = 0.95)`
-
-Confidence interval for a proportion.
-
-**Returns:**
-```yaml
-type: confidence_interval
-parameter: proportion
-confidence: 0.95
-n: 100
-proportion: 0.65
-lower: 0.551
-upper: 0.749
-margin: 0.099
-```
-
-#### `confidence_interval_variance(array, confidence = 0.95)`
-
-Confidence interval for variance.
-
-**Returns:**
-```yaml
-type: confidence_interval
-parameter: variance
-confidence: 0.95
-n: 30
-variance: 25.5
-lower: 18.2
-upper: 38.7
-```
-
-#### `confidence_interval_difference(array1, array2, confidence = 0.95)`
-
-Confidence interval for difference of means.
-
-**Returns:**
-```yaml
-type: confidence_interval
-parameter: difference_of_means
-confidence: 0.95
-difference: 5.5
-lower: 2.3
-upper: 8.7
-margin: 3.2
-means:
-  group_a: 105.5
-  group_b: 100
+const data = datly.random_normal(50, 0, 1, 42);
+const parsedData = JSON.parse(data).sample;
+const result = datly.shapiro_wilk(parsedData);
+console.log(result);
 ```
 
 ---
 
 ## Correlation Analysis
 
-### `corr_pearson(array1, array2)`
+### `correlation(x, y, method = 'pearson')`
 
-Pearson correlation coefficient.
+Calculates correlation between two variables.
+
+**Parameters:**
+- `x`: First variable array
+- `y`: Second variable array
+- `method`: 'pearson', 'spearman', or 'kendall'
 
 **Returns:**
 ```yaml
-type: statistic
-name: pearson_correlation
-value: 0.856
+type: correlation
+method: pearson
+correlation: 0.87
+n: 20
+p_value: 0.001
+confidence_interval:
+  - 0.68
+  - 0.95
+interpretation: strong_positive
 ```
 
 **Example:**
 ```javascript
-const x = [1, 2, 3, 4, 5];
-const y = [2, 4, 5, 4, 5];
-datly.corr_pearson(x, y);
+const x = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+const y = [2, 4, 6, 8, 10, 12, 14, 16, 18, 20];
+
+const result = datly.correlation(x, y, 'pearson');
+console.log(result);
 ```
 
-### `corr_spearman(array1, array2)`
+### `df_corr(dataframe, method = 'pearson')`
 
-Spearman rank correlation coefficient.
+Calculates correlation matrix for a dataframe.
 
 **Returns:**
 ```yaml
-type: statistic
-name: spearman_correlation
-value: 0.9
+type: correlation_matrix
+method: pearson
+variables:
+  - age
+  - salary
+  - experience
+matrix:
+  - - 1.000
+    - 0.856
+    - 0.923
+  - - 0.856
+    - 1.000
+    - 0.789
+  - - 0.923
+    - 0.789
+    - 1.000
 ```
 
-### `corr_kendall(array1, array2)`
+**Example:**
+```javascript
+const employees = [
+  { age: 25, salary: 50000, experience: 2 },
+  { age: 30, salary: 60000, experience: 5 },
+  { age: 35, salary: 70000, experience: 8 },
+  { age: 40, salary: 80000, experience: 12 }
+];
 
-Kendall's tau correlation coefficient.
-
-**Returns:**
-```yaml
-type: statistic
-name: kendall_tau
-value: 0.8
-concordant: 8
-discordant: 2
-n: 5
-```
-
-### `corr_partial(array1, array2, array3)`
-
-Partial correlation controlling for a third variable.
-
-**Returns:**
-```yaml
-type: statistic
-name: partial_correlation
-value: 0.456
-controlling_for: third_variable
-```
-
-### `corr_matrix_all(data)`
-
-Comprehensive correlation matrix with Pearson, Spearman, and Kendall.
-
-**Returns:**
-```yaml
-type: correlation_analysis
-pearson:
-  age:
-    age: 1
-    salary: 0.85
-  salary:
-    age: 0.85
-    salary: 1
-spearman:
-  age:
-    age: 1
-    salary: 0.82
-  salary:
-    age: 0.82
-    salary: 1
-kendall:
-  age:
-    age: 1
-    salary: 0.75
-  salary:
-    age: 0.75
-    salary: 1
+const corrMatrix = datly.df_corr(employees, 'pearson');
+console.log(corrMatrix);
 ```
 
 ---
@@ -1742,53 +982,58 @@ kendall:
 
 #### `train_linear_regression(X, y)`
 
-Trains a multiple linear regression model.
+Trains a linear regression model.
 
 **Parameters:**
-- `X`: 2D array of features [[x1, x2, ...], ...]
-- `y`: Array of target values
+- `X`: Feature matrix (2D array)
+- `y`: Target vector (1D array)
 
 **Returns:**
 ```yaml
-type: linear_regression
-weights:
-  - 2.5
-  - 1.8
-  - -0.3
-mse: 12.34
-r2: 0.856
-n: 100
-p: 2
+type: model
+algorithm: linear_regression
+n_features: 2
+n_samples: 100
+coefficients:
+  - 2.45
+  - -1.23
+intercept: 0.67
+r_squared: 0.78
+mse: 15.4
+training_score: 0.78
 ```
 
 **Example:**
 ```javascript
-const X = [[1, 2], [2, 3], [3, 4], [4, 5]];
-const y = [3, 5, 7, 9];
+const X = [[1, 2], [2, 3], [3, 4], [4, 5], [5, 6]];
+const y = [3, 5, 7, 9, 11];
+
 const model = datly.train_linear_regression(X, y);
+console.log(model);
 ```
 
 #### `predict_linear(model, X)`
 
 Makes predictions using a trained linear regression model.
 
-**Parameters:**
-- `model`: Model text/object from `train_linear_regression`
-- `X`: 2D array of features
-
 **Returns:**
 ```yaml
-type: prediction
-name: linear_regression
+type: predictions
+algorithm: linear_regression
+n_predictions: 5
 predictions:
-  - 105.3
-  - 110.7
-  - 98.2
+  - 3.12
+  - 5.57
+  - 7.02
+  - 9.47
+  - 11.92
 ```
 
 **Example:**
 ```javascript
-const predictions = datly.predict_linear(model, [[5, 6], [6, 7]]);
+const X_test = [[1.5, 2.5], [2.5, 3.5], [3.5, 4.5]];
+const predictions = datly.predict_linear(model, X_test);
+console.log(predictions);
 ```
 
 ### Logistic Regression
@@ -1798,58 +1043,65 @@ const predictions = datly.predict_linear(model, [[5, 6], [6, 7]]);
 Trains a logistic regression model for binary classification.
 
 **Parameters:**
-- `X`: 2D array of features
-- `y`: Array of binary labels (0 or 1)
-- `options`:
-  - `learning_rate`: Learning rate (default: 0.1)
-  - `iterations`: Number of iterations (default: 1000)
-  - `l2`: L2 regularization parameter (default: 0)
+- `X`: Feature matrix
+- `y`: Binary target vector (0s and 1s)
+- `options`: Training options (learning_rate, max_iterations, tolerance)
 
 **Returns:**
 ```yaml
-type: logistic_regression
-weights:
-  - 0.5
-  - 1.2
-  - -0.8
-accuracy: 0.92
-n: 100
-p: 2
+type: model
+algorithm: logistic_regression
+n_features: 2
+n_samples: 100
+coefficients:
+  - 1.45
+  - -0.89
+intercept: 0.23
+accuracy: 0.85
+log_likelihood: -45.6
+iterations: 150
+converged: true
 ```
 
 **Example:**
 ```javascript
-const X = [[1, 2], [2, 3], [3, 1], [4, 2]];
-const y = [0, 0, 1, 1];
-const model = datly.train_logistic_regression(X, y, {
-  learning_rate: 0.1,
-  iterations: 1000,
-  l2: 0.01
-});
+const X = [[1, 2], [2, 1], [3, 4], [4, 3], [5, 6], [6, 5]];
+const y = [0, 0, 1, 1, 1, 1];
+
+const options = {
+  learning_rate: 0.01,
+  max_iterations: 1000,
+  tolerance: 1e-6
+};
+
+const model = datly.train_logistic_regression(X, y, options);
+console.log(model);
 ```
 
-#### `predict_logistic(model, X, threshold = 0.5)`
+#### `predict_logistic(model, X)`
 
 Makes predictions using a trained logistic regression model.
 
 **Returns:**
 ```yaml
-type: prediction
-name: logistic_regression
-threshold: 0.5
-probabilities:
-  - 0.234
-  - 0.789
-  - 0.456
-classes:
+type: predictions
+algorithm: logistic_regression
+n_predictions: 3
+predictions:
   - 0
   - 1
-  - 0
+  - 1
+probabilities:
+  - 0.23
+  - 0.78
+  - 0.85
 ```
 
 **Example:**
 ```javascript
-const predictions = datly.predict_logistic(model, [[5, 6], [6, 7]], 0.5);
+const X_test = [[2, 3], [4, 5], [6, 7]];
+const predictions = datly.predict_logistic(model, X_test);
+console.log(predictions);
 ```
 
 ---
@@ -1858,245 +1110,117 @@ const predictions = datly.predict_logistic(model, [[5, 6], [6, 7]], 0.5);
 
 ### K-Nearest Neighbors (KNN)
 
-#### `train_knn_classifier(X, y, k = 5)`
+#### `train_knn(X, y, k = 3)`
 
 Trains a KNN classifier.
 
 **Parameters:**
-- `X`: 2D array of features
-- `y`: Array of class labels
-- `k`: Number of neighbors (default: 5)
+- `X`: Feature matrix
+- `y`: Target vector
+- `k`: Number of neighbors (default: 3)
 
 **Returns:**
 ```yaml
-type: knn_classifier
-k: 5
-x:
-  - - 1
-    - 2
-  - - 2
-    - 3
-y:
+type: model
+algorithm: knn
+k: 3
+n_features: 2
+n_samples: 100
+classes:
   - 0
   - 1
-n: 100
-p: 2
+  - 2
+training_accuracy: 0.92
 ```
 
 **Example:**
 ```javascript
-const X = [[1, 2], [2, 3], [3, 1], [4, 2]];
-const y = [0, 0, 1, 1];
-const model = datly.train_knn_classifier(X, y, 3);
+const X = [[1, 2], [2, 3], [3, 1], [1, 3], [2, 1], [3, 2]];
+const y = [0, 0, 1, 1, 2, 2];
+
+const model = datly.train_knn(X, y, 3);
+console.log(model);
 ```
 
-#### `predict_knn_classifier(model, X)`
+#### `predict_knn(model, X)`
 
-Makes predictions using KNN classifier.
+Makes predictions using a trained KNN model.
 
 **Returns:**
 ```yaml
-type: prediction
-name: knn_classifier
-k: 5
+type: predictions
+algorithm: knn
+k: 3
+n_predictions: 2
 predictions:
+  - 1
   - 0
-  - 1
-  - 1
+distances:
+  - - 1.41
+    - 2.24
+    - 1.00
+  - - 1.00
+    - 1.41
+    - 2.83
 ```
 
-#### `train_knn_regressor(X, y, k = 5)`
-
-Trains a KNN regressor.
-
-**Returns:**
-```yaml
-type: knn_regressor
-k: 5
-x:
-  - - 1
-    - 2
-  - - 2
-    - 3
-y:
-  - 10.5
-  - 12.3
-n: 100
-p: 2
+**Example:**
+```javascript
+const X_test = [[2.5, 2], [1.5, 2.5]];
+const predictions = datly.predict_knn(model, X_test);
+console.log(predictions);
 ```
 
-#### `predict_knn_regressor(model, X)`
+### Decision Tree
 
-Makes predictions using KNN regressor.
-
-**Returns:**
-```yaml
-type: prediction
-name: knn_regressor
-k: 5
-predictions:
-  - 10.7
-  - 11.8
-  - 12.5
-```
-
-### Decision Trees
-
-#### `train_decision_tree_classifier(X, y, options = {})`
+#### `train_decision_tree(X, y, options = {})`
 
 Trains a decision tree classifier.
 
 **Parameters:**
-- `options`:
-  - `max_depth`: Maximum depth of tree (default: 5)
-  - `min_samples_split`: Minimum samples required to split (default: 2)
+- `X`: Feature matrix
+- `y`: Target vector
+- `options`: Tree options (max_depth, min_samples_split, min_samples_leaf)
 
 **Returns:**
 ```yaml
-type: decision_tree_classifier
-tree:
-  leaf: false
-  feature: 0
-  threshold: 2.5
-  left:
-    leaf: true
-    prediction: 0
-    n: 50
-  right:
-    leaf: true
-    prediction: 1
-    n: 50
+type: model
+algorithm: decision_tree
 max_depth: 5
-min_samples: 2
-n: 100
-p: 2
+n_features: 4
+n_samples: 150
+classes:
+  - 0
+  - 1
+  - 2
+tree_depth: 3
+n_nodes: 7
+feature_importance:
+  - 0.45
+  - 0.32
+  - 0.15
+  - 0.08
+training_accuracy: 0.96
 ```
 
 **Example:**
 ```javascript
-const model = datly.train_decision_tree_classifier(X, y, {
+const X = [
+  [5.1, 3.5, 1.4, 0.2],
+  [4.9, 3.0, 1.4, 0.2],
+  [7.0, 3.2, 4.7, 1.4],
+  [6.4, 3.2, 4.5, 1.5]
+];
+const y = [0, 0, 1, 1];
+
+const options = {
   max_depth: 5,
-  min_samples_split: 2
-});
-```
+  min_samples_split: 2,
+  min_samples_leaf: 1
+};
 
-#### `train_decision_tree_regressor(X, y, options = {})`
-
-Trains a decision tree regressor.
-
-**Returns:**
-```yaml
-type: decision_tree_regressor
-tree:
-  leaf: false
-  feature: 0
-  threshold: 2.5
-  left: ...
-  right: ...
-max_depth: 5
-min_samples: 2
-n: 100
-p: 2
-```
-
-#### `predict_decision_tree(model, X)`
-
-Makes predictions using a decision tree.
-
-**Returns:**
-```yaml
-type: prediction
-name: decision_tree_classifier
-predictions:
-  - 0
-  - 1
-  - 1
-```
-
-### Random Forest
-
-#### `train_random_forest_classifier(X, y, options = {})`
-
-Trains a random forest classifier.
-
-**Parameters:**
-- `options`:
-  - `n_estimators`: Number of trees (default: 10)
-  - `max_depth`: Maximum depth (default: 5)
-  - `min_samples_split`: Minimum samples to split (default: 2)
-  - `seed`: Random seed (default: 42)
-
-**Returns:**
-```yaml
-type: random_forest_classifier
-trees:
-  - leaf: false
-    feature: 0
-    threshold: 2.5
-    ...
-  - leaf: false
-    feature: 1
-    threshold: 3.2
-    ...
-n_trees: 10
-max_depth: 5
-min_samples: 2
-n: 100
-p: 2
-```
-
-**Example:**
-```javascript
-const model = datly.train_random_forest_classifier(X, y, {
-  n_estimators: 10,
-  max_depth: 5,
-  seed: 42
-});
-```
-
-#### `train_random_forest_regressor(X, y, options = {})`
-
-Trains a random forest regressor.
-
-**Returns:**
-```yaml
-type: random_forest_regressor
-trees: [...]
-n_trees: 10
-max_depth: 5
-min_samples: 2
-n: 100
-p: 2
-```
-
-#### `predict_random_forest_classifier(model, X)`
-
-Makes predictions using random forest classifier.
-
-**Returns:**
-```yaml
-type: prediction
-name: random_forest_classifier
-n_trees: 10
-predictions:
-  - 0
-  - 1
-  - 1
-```
-
-#### `predict_random_forest_regressor(model, X)`
-
-Makes predictions using random forest regressor.
-
-**Returns:**
-```yaml
-type: prediction
-name: random_forest_regressor
-n_trees: 10
-predictions:
-  - 10.7
-  - 11.8
-  - 12.5
+const model = datly.train_decision_tree(X, y, options);
+console.log(model);
 ```
 
 ### Naive Bayes
@@ -2105,53 +1229,36 @@ predictions:
 
 Trains a Gaussian Naive Bayes classifier.
 
-**Parameters:**
-- `X`: 2D array of features
-- `y`: Array of class labels
-
 **Returns:**
 ```yaml
-type: naive_bayes
+type: model
+algorithm: naive_bayes
+variant: gaussian
+n_features: 4
+n_samples: 150
 classes:
   - 0
   - 1
-priors:
-  0: 0.5
-  1: 0.5
-stats:
-  0:
-    - mean: 2.5
-      std: 1.2
-    - mean: 3.1
-      std: 0.8
-  1:
-    - mean: 5.2
-      std: 1.5
-    - mean: 6.3
-      std: 1.1
-n: 100
-p: 2
+  - 2
+class_priors:
+  - 0.33
+  - 0.33
+  - 0.34
+training_accuracy: 0.94
 ```
 
 **Example:**
 ```javascript
-const X = [[1, 2], [2, 3], [5, 6], [6, 7]];
+const X = [
+  [5.1, 3.5, 1.4, 0.2],
+  [4.9, 3.0, 1.4, 0.2],
+  [7.0, 3.2, 4.7, 1.4],
+  [6.4, 3.2, 4.5, 1.5]
+];
 const y = [0, 0, 1, 1];
+
 const model = datly.train_naive_bayes(X, y);
-```
-
-#### `predict_naive_bayes(model, X)`
-
-Makes predictions using Naive Bayes classifier.
-
-**Returns:**
-```yaml
-type: prediction
-name: naive_bayes
-predictions:
-  - 0
-  - 1
-  - 1
+console.log(model);
 ```
 
 ---
@@ -2160,579 +1267,283 @@ predictions:
 
 ### K-Means Clustering
 
-#### `train_kmeans(X, k = 3, options = {})`
+#### `kmeans(X, k, options = {})`
 
-Trains a K-means clustering model.
+Performs K-means clustering.
 
 **Parameters:**
-- `X`: 2D array of features
-- `k`: Number of clusters (default: 3)
-- `options`:
-  - `max_iterations`: Maximum iterations (default: 100)
-  - `seed`: Random seed (default: 42)
+- `X`: Data matrix
+- `k`: Number of clusters
+- `options`: Algorithm options (max_iterations, tolerance, seed)
 
 **Returns:**
 ```yaml
-type: kmeans
+type: clustering_result
+algorithm: kmeans
 k: 3
+n_samples: 100
+n_features: 2
+iterations: 15
+converged: true
+inertia: 45.7
 centroids:
   - - 2.1
-    - 3.5
+    - 3.2
   - - 5.8
-    - 6.2
-  - - 9.1
-    - 8.7
-inertia: 45.67
-n: 150
-p: 2
+    - 1.4
+  - - 8.3
+    - 6.7
+labels:
+  - 0
+  - 0
+  - 1
+  - 2
+  - 1
 ```
 
 **Example:**
 ```javascript
-const X = [[1, 2], [2, 3], [5, 6], [6, 7], [9, 8], [10, 9]];
-const model = datly.train_kmeans(X, 3, {
+const X = [
+  [1, 2], [1.5, 1.8], [5, 8], [8, 8], [1, 0.6], [9, 11]
+];
+
+const options = {
   max_iterations: 100,
+  tolerance: 1e-4,
   seed: 42
-});
-```
+};
 
-#### `predict_kmeans(model, X)`
-
-Assigns cluster labels to new data points.
-
-**Returns:**
-```yaml
-type: prediction
-name: kmeans
-k: 3
-cluster_labels:
-  - 0
-  - 0
-  - 1
-  - 1
-  - 2
-  - 2
-```
-
-**Example:**
-```javascript
-const newData = [[1.5, 2.5], [5.5, 6.5], [9.5, 8.5]];
-const clusters = datly.predict_kmeans(model, newData);
+const result = datly.kmeans(X, 3, options);
+console.log(result);
 ```
 
 ---
 
 ## Ensemble Methods
 
-### `ensemble_voting_classifier(models, X, method = 'hard')`
+### Random Forest
 
-Combines multiple classifier predictions through voting.
+#### `train_random_forest(X, y, options = {})`
+
+Trains a random forest classifier.
 
 **Parameters:**
-- `models`: Array of trained model texts/objects
-- `X`: 2D array of features
-- `method`: 'hard' for majority voting, 'soft' for probability averaging
+- `X`: Feature matrix
+- `y`: Target vector
+- `options`: Forest options (n_trees, max_depth, max_features, sample_ratio)
 
 **Returns:**
 ```yaml
-type: ensemble_prediction
-method: voting_hard
-n_models: 3
-predictions:
+type: model
+algorithm: random_forest
+n_trees: 100
+max_depth: 10
+n_features: 4
+n_samples: 150
+classes:
   - 0
   - 1
-  - 1
-  - 0
+  - 2
+oob_score: 0.91
+feature_importance:
+  - 0.35
+  - 0.28
+  - 0.22
+  - 0.15
+training_accuracy: 0.98
 ```
 
 **Example:**
 ```javascript
-const model1 = datly.train_logistic_regression(X, y);
-const model2 = datly.train_knn_classifier(X, y, 5);
-const model3 = datly.train_decision_tree_classifier(X, y);
+const X = [
+  [5.1, 3.5, 1.4, 0.2],
+  [4.9, 3.0, 1.4, 0.2],
+  [7.0, 3.2, 4.7, 1.4],
+  [6.4, 3.2, 4.5, 1.5]
+];
+const y = [0, 0, 1, 1];
 
-const ensemble = datly.ensemble_voting_classifier(
-  [model1, model2, model3],
-  X_test,
-  'hard'
-);
-```
+const options = {
+  n_trees: 100,
+  max_depth: 10,
+  max_features: 'sqrt',
+  sample_ratio: 0.8
+};
 
-### `ensemble_voting_regressor(models, X)`
-
-Combines multiple regressor predictions through averaging.
-
-**Returns:**
-```yaml
-type: ensemble_prediction
-method: voting_average
-n_models: 3
-predictions:
-  - 105.3
-  - 110.7
-  - 98.2
-```
-
-**Example:**
-```javascript
-const model1 = datly.train_linear_regression(X, y);
-const model2 = datly.train_knn_regressor(X, y, 5);
-const model3 = datly.train_decision_tree_regressor(X, y);
-
-const ensemble = datly.ensemble_voting_regressor(
-  [model1, model2, model3],
-  X_test
-);
+const model = datly.train_random_forest(X, y, options);
+console.log(model);
 ```
 
 ---
 
-## Model Evaluation
+## Model Evaluation and Utilities
 
-### `train_test_split(X, y, test_size = 0.2, seed = 42)`
+### Data Splitting
+
+#### `train_test_split(X, y, test_size = 0.2, seed = null)`
 
 Splits data into training and testing sets.
 
-**Parameters:**
-- `X`: 2D array of features
-- `y`: Array of labels
-- `test_size`: Proportion for test set (default: 0.2)
-- `seed`: Random seed (default: 42)
-
 **Returns:**
 ```yaml
-type: split
-sizes:
-  train: 80
-  test: 20
+type: data_split
+train_size: 0.8
+test_size: 0.2
+n_samples: 100
+n_train: 80
+n_test: 20
+seed: 42
 indices:
   train:
     - 0
-    - 2
     - 3
-    ...
+    - 5
+    # ... more indices
   test:
     - 1
+    - 2
     - 4
-    ...
-preview:
-  x_train:
-    - - 1
-      - 2
-    - - 3
-      - 4
-  y_train:
-    - 0
-    - 1
-    - 0
+    # ... more indices
 ```
 
 **Example:**
 ```javascript
+const X = [[1, 2], [3, 4], [5, 6], [7, 8], [9, 10]];
+const y = [0, 1, 0, 1, 0];
+
 const split = datly.train_test_split(X, y, 0.2, 42);
-// Use split.indices to extract train/test data
+console.log(split);
+
+// Use indices to create splits
+const trainIndices = JSON.parse(split).indices.train;
+const testIndices = JSON.parse(split).indices.test;
+
+const X_train = trainIndices.map(i => X[i]);
+const y_train = trainIndices.map(i => y[i]);
+const X_test = testIndices.map(i => X[i]);
+const y_test = testIndices.map(i => y[i]);
 ```
 
-### Classification Metrics
-
-#### `metrics_classification(y_true, y_pred)`
-
-Calculates classification metrics including accuracy, precision, recall, and F1-score.
-
-**Returns:**
-```yaml
-type: metric
-name: classification_report
-confusion_matrix:
-  tp: 45
-  fp: 5
-  tn: 42
-  fn: 8
-accuracy: 0.87
-precision: 0.9
-recall: 0.849
-f1: 0.874
-```
-
-**Example:**
-```javascript
-const y_true = [0, 1, 1, 0, 1, 1, 0, 0];
-const y_pred = [0, 1, 0, 0, 1, 1, 0, 1];
-const metrics = datly.metrics_classification(y_true, y_pred);
-```
-
-### Regression Metrics
-
-#### `metrics_regression(y_true, y_pred)`
-
-Calculates regression metrics including MSE, MAE, and R².
-
-**Returns:**
-```yaml
-type: metric
-name: regression_report
-mse: 12.34
-mae: 2.87
-r2: 0.856
-```
-
-**Example:**
-```javascript
-const y_true = [3.0, 5.0, 7.0, 9.0];
-const y_pred = [2.8, 5.2, 6.9, 9.1];
-const metrics = datly.metrics_regression(y_true, y_pred);
-```
-
-### Cross Validation
-
-#### `cross_validate(X, y, model_type, options = {})`
-
-Performs k-fold cross-validation.
-
-**Parameters:**
-- `X`: 2D array of features
-- `y`: Array of labels
-- `model_type`: String - 'linear_regression', 'logistic_regression', 'knn_classifier', 'decision_tree_classifier', 'random_forest_classifier'
-- `options`:
-  - `k_folds`: Number of folds (default: 5)
-  - Model-specific options (e.g., `k` for KNN, `max_depth` for trees)
-
-**Returns:**
-```yaml
-type: cross_validation
-model_type: logistic_regression
-k_folds: 5
-scores:
-  - 0.85
-  - 0.88
-  - 0.82
-  - 0.87
-  - 0.86
-mean_score: 0.856
-std_score: 0.022
-```
-
-**Example:**
-```javascript
-const cv = datly.cross_validate(X, y, 'logistic_regression', {
-  k_folds: 5,
-  learning_rate: 0.1,
-  iterations: 1000
-});
-```
-
-### Feature Importance
-
-#### `feature_importance_tree(model)`
-
-Extracts feature importance from tree-based models.
-
-**Parameters:**
-- `model`: Trained decision tree or random forest model
-
-**Returns:**
-```yaml
-type: feature_importance
-model: random_forest_classifier
-n_trees: 10
-importance:
-  - 0.45
-  - 0.32
-  - 0.15
-  - 0.08
-```
-
-**Example:**
-```javascript
-const model = datly.train_random_forest_classifier(X, y);
-const importance = datly.feature_importance_tree(model);
-```
-
----
-
-## Data Preprocessing
-
-### Scaling
+### Feature Scaling
 
 #### `standard_scaler_fit(X)`
 
-Fits a standard scaler (z-score normalization).
+Fits a standard scaler to the data.
 
 **Returns:**
 ```yaml
-type: standard_scaler
-params:
-  - mean: 50.5
-    std: 15.2
-  - mean: 100.3
-    std: 25.7
-n: 100
-p: 2
+type: scaler
+method: standard
+n_features: 3
+n_samples: 100
+means:
+  - 2.5
+  - 15.3
+  - 0.8
+stds:
+  - 1.2
+  - 5.6
+  - 0.3
 ```
 
 **Example:**
 ```javascript
-const X = [[50, 100], [60, 120], [40, 90]];
+const X = [[1, 10, 0.5], [2, 15, 0.7], [3, 20, 0.9], [4, 25, 1.1]];
 const scaler = datly.standard_scaler_fit(X);
+console.log(scaler);
 ```
 
 #### `standard_scaler_transform(scaler, X)`
 
-Transforms data using fitted standard scaler.
+Transforms data using a fitted scaler.
 
 **Returns:**
 ```yaml
 type: scaled_data
 method: standard
+n_samples: 4
+n_features: 3
 preview:
-  - - 0.0
-    - 0.0
-  - - 0.625
-    - 0.767
-  - - -0.625
-    - -0.767
+  - - -1.34
+    - -0.89
+    - -1.00
+  - - -0.45
+    - -0.07
+    - -0.33
+  - - 0.45
+    - 0.75
+    - 0.33
+  - - 1.34
+    - 1.21
+    - 1.00
 ```
 
 **Example:**
 ```javascript
-const scaled = datly.standard_scaler_transform(scaler, X);
+const X_scaled = datly.standard_scaler_transform(scaler, X);
+console.log(X_scaled);
 ```
 
-#### `minmax_scaler_fit(X)`
+### Model Metrics
 
-Fits a min-max scaler (scales to [0, 1] range).
+#### `metrics_classification(y_true, y_pred)`
+
+Calculates classification metrics.
 
 **Returns:**
 ```yaml
-type: minmax_scaler
-params:
-  - min: 40
-    max: 60
-  - min: 90
-    max: 120
-n: 100
-p: 2
-```
-
-#### `minmax_scaler_transform(scaler, X)`
-
-Transforms data using fitted min-max scaler.
-
-**Returns:**
-```yaml
-type: scaled_data
-method: minmax
-preview:
-  - - 0.5
-    - 0.333
-  - - 1.0
-    - 1.0
-  - - 0.0
-    - 0.0
-```
-
----
-
-## Dimensionality Reduction
-
-### Principal Component Analysis (PCA)
-
-#### `train_pca(X, n_components = 2)`
-
-Trains a PCA model.
-
-**Parameters:**
-- `X`: 2D array of features
-- `n_components`: Number of principal components (default: 2)
-
-**Returns:**
-```yaml
-type: pca
-n_components: 2
-means:
-  - 50.5
-  - 100.3
-  - 75.8
-components:
-  - - 0.707
-    - 0.707
-    - 0.0
-  - - -0.707
-    - 0.707
-    - 0.0
-n: 100
-p: 3
+type: classification_metrics
+accuracy: 0.85
+precision: 0.83
+recall: 0.87
+f1_score: 0.85
+confusion_matrix:
+  - - 25
+    - 3
+  - - 5
+    - 27
+support:
+  - 28
+  - 32
 ```
 
 **Example:**
 ```javascript
-const X = [[1, 2, 3], [4, 5, 6], [7, 8, 9]];
-const pca = datly.train_pca(X, 2);
+const y_true = [0, 0, 1, 1, 0, 1, 1, 0];
+const y_pred = [0, 1, 1, 1, 0, 1, 0, 0];
+
+const metrics = datly.metrics_classification(y_true, y_pred);
+console.log(metrics);
 ```
 
-#### `transform_pca(model, X)`
+#### `metrics_regression(y_true, y_pred)`
 
-Transforms data to principal component space.
+Calculates regression metrics.
 
 **Returns:**
 ```yaml
-type: pca_transform
-n_components: 2
-preview:
-  - - 2.121
-    - 0.0
-  - - 0.707
-    - 0.0
-  - - -1.414
-    - 0.0
+type: regression_metrics
+mae: 2.15
+mse: 6.78
+rmse: 2.60
+r2: 0.78
+explained_variance: 0.79
 ```
 
 **Example:**
 ```javascript
-const transformed = datly.transform_pca(pca, X);
-```
+const y_true = [3, -0.5, 2, 7];
+const y_pred = [2.5, 0.0, 2, 8];
 
----
-
-## Time Series Analysis
-
-### `moving_average(array, window = 3)`
-
-Calculates moving average.
-
-**Parameters:**
-- `array`: Time series data
-- `window`: Window size (default: 3)
-
-**Returns:**
-```yaml
-type: time_series
-method: moving_average
-window: 3
-values:
-  - 10
-  - 15
-  - 20
-  - 22
-  - 25
-```
-
-**Example:**
-```javascript
-const data = [10, 20, 30, 20, 30, 25];
-const ma = datly.moving_average(data, 3);
-```
-
-### `exponential_smoothing(array, alpha = 0.3)`
-
-Applies exponential smoothing.
-
-**Parameters:**
-- `array`: Time series data
-- `alpha`: Smoothing parameter (0 < α < 1)
-
-**Returns:**
-```yaml
-type: time_series
-method: exponential_smoothing
-alpha: 0.3
-values:
-  - 10
-  - 13
-  - 18.1
-  - 18.47
-  - 21.73
-```
-
-**Example:**
-```javascript
-const smoothed = datly.exponential_smoothing(data, 0.3);
-```
-
-### `autocorrelation(array, lag = 1)`
-
-Calculates autocorrelation at a given lag.
-
-**Parameters:**
-- `array`: Time series data
-- `lag`: Lag value (default: 1)
-
-**Returns:**
-```yaml
-type: statistic
-name: autocorrelation
-lag: 1
-value: 0.456
-```
-
-**Example:**
-```javascript
-const acf = datly.autocorrelation(data, 1);
-```
-
----
-
-## Outlier Detection
-
-### `outliers_iqr(array)`
-
-Detects outliers using the IQR (Interquartile Range) method.
-
-**Returns:**
-```yaml
-type: outlier_detection
-method: iqr
-lower_bound: 45.5
-upper_bound: 154.5
-n_outliers: 3
-outlier_indices:
-  - 5
-  - 12
-  - 23
-outlier_values:
-  - 200
-  - 30
-  - 180
-```
-
-**Example:**
-```javascript
-const data = [50, 55, 60, 65, 70, 200, 75, 80];
-const outliers = datly.outliers_iqr(data);
-```
-
-### `outliers_zscore(array, threshold = 3)`
-
-Detects outliers using z-score method.
-
-**Parameters:**
-- `array`: Array of numbers
-- `threshold`: Z-score threshold (default: 3)
-
-**Returns:**
-```yaml
-type: outlier_detection
-method: zscore
-threshold: 3
-n_outliers: 2
-outlier_indices:
-  - 5
-  - 12
-outlier_values:
-  - 200
-  - 30
-```
-
-**Example:**
-```javascript
-const outliers = datly.outliers_zscore(data, 3);
+const metrics = datly.metrics_regression(y_true, y_pred);
+console.log(metrics);
 ```
 
 ---
 
 ## Visualization
 
-All visualization functions create SVG-based charts. They accept optional configuration and a selector for where to render the chart.
+All visualization functions create SVG-based charts that can be rendered in the browser. They accept optional configuration and a selector for where to render the chart.
 
 ### Configuration Options
 
@@ -2747,47 +1558,50 @@ Common options for all plots:
 
 ### `plotHistogram(array, options = {}, selector)`
 
-Creates a histogram.
+Creates a histogram showing the distribution of values.
 
 **Additional Options:**
 - `bins`: Number of bins (default: 10)
 
 **Example:**
 ```javascript
-const data = [1, 2, 2, 3, 3, 3, 4, 4, 5];
+const data = [1, 2, 2, 3, 3, 3, 4, 4, 5, 5, 5, 5];
 datly.plotHistogram(data, {
   width: 600,
   height: 400,
-  bins: 10,
-  title: 'Distribution',
+  bins: 8,
+  title: 'Value Distribution',
+  xlabel: 'Values',
+  ylabel: 'Frequency',
   color: '#4CAF50'
-}, '#chart');
+}, '#chart-container');
 ```
 
 ### `plotScatter(x, y, options = {}, selector)`
 
-Creates a scatter plot.
+Creates a scatter plot showing the relationship between two variables.
 
 **Additional Options:**
 - `size`: Point size (default: 4)
 
 **Example:**
 ```javascript
-const x = [1, 2, 3, 4, 5];
-const y = [2, 4, 3, 5, 6];
+const x = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+const y = [2, 4, 3, 5, 6, 8, 7, 9, 8, 10];
 datly.plotScatter(x, y, {
   width: 600,
   height: 400,
-  title: 'Scatter Plot',
+  title: 'Correlation Analysis',
   xlabel: 'X Variable',
   ylabel: 'Y Variable',
-  size: 5
-}, '#chart');
+  size: 6,
+  color: '#2196F3'
+}, '#scatter-plot');
 ```
 
 ### `plotLine(x, y, options = {}, selector)`
 
-Creates a line chart.
+Creates a line chart for time series or continuous data.
 
 **Additional Options:**
 - `lineWidth`: Line width (default: 2)
@@ -2795,32 +1609,41 @@ Creates a line chart.
 
 **Example:**
 ```javascript
-const x = [1, 2, 3, 4, 5];
-const y = [2, 4, 3, 5, 6];
-datly.plotLine(x, y, {
+const months = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+const sales = [100, 120, 140, 110, 160, 180, 200, 190, 220, 240, 260, 280];
+datly.plotLine(months, sales, {
+  width: 800,
+  height: 400,
   lineWidth: 3,
   showPoints: true,
-  title: 'Time Series'
-}, '#chart');
+  title: 'Monthly Sales Trend',
+  xlabel: 'Month',
+  ylabel: 'Sales ($000)',
+  color: '#FF5722'
+}, '#line-chart');
 ```
 
 ### `plotBar(categories, values, options = {}, selector)`
 
-Creates a bar chart.
+Creates a bar chart for categorical data.
 
 **Example:**
 ```javascript
-const categories = ['A', 'B', 'C', 'D'];
-const values = [10, 25, 15, 30];
-datly.plotBar(categories, values, {
-  title: 'Sales by Category',
-  ylabel: 'Sales ($)'
-}, '#chart');
+const categories = ['Q1', 'Q2', 'Q3', 'Q4'];
+const revenues = [120, 150, 180, 200];
+datly.plotBar(categories, revenues, {
+  width: 600,
+  height: 400,
+  title: 'Quarterly Revenue',
+  xlabel: 'Quarter',
+  ylabel: 'Revenue ($M)',
+  color: '#9C27B0'
+}, '#bar-chart');
 ```
 
 ### `plotBoxplot(data, options = {}, selector)`
 
-Creates box plots for one or more groups.
+Creates box plots showing distribution statistics for one or more groups.
 
 **Parameters:**
 - `data`: Array of arrays (each array is a group) or single array
@@ -2829,36 +1652,41 @@ Creates box plots for one or more groups.
 
 **Example:**
 ```javascript
-const group1 = [1, 2, 3, 4, 5, 6];
-const group2 = [2, 3, 4, 5, 6, 7];
-const group3 = [3, 4, 5, 6, 7, 8];
+const group1 = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+const group2 = [2, 3, 4, 5, 6, 7, 8, 9, 10];
+const group3 = [3, 4, 5, 6, 7, 8, 9, 10, 11];
 
 datly.plotBoxplot([group1, group2, group3], {
-  labels: ['Group A', 'Group B', 'Group C'],
-  title: 'Comparison'
-}, '#chart');
+  labels: ['Control', 'Treatment A', 'Treatment B'],
+  title: 'Treatment Comparison',
+  ylabel: 'Response Value',
+  width: 600,
+  height: 400
+}, '#boxplot');
 ```
 
 ### `plotPie(labels, values, options = {}, selector)`
 
-Creates a pie chart.
+Creates a pie chart for proportional data.
 
 **Additional Options:**
 - `showLabels`: Display labels (default: true)
 
 **Example:**
 ```javascript
-const labels = ['Category A', 'Category B', 'Category C'];
-const values = [30, 45, 25];
-datly.plotPie(labels, values, {
-  title: 'Market Share',
+const categories = ['Desktop', 'Mobile', 'Tablet'];
+const usage = [45, 40, 15];
+datly.plotPie(categories, usage, {
+  width: 500,
+  height: 500,
+  title: 'Device Usage Distribution',
   showLabels: true
-}, '#chart');
+}, '#pie-chart');
 ```
 
 ### `plotHeatmap(matrix, options = {}, selector)`
 
-Creates a heatmap for a correlation matrix.
+Creates a heatmap visualization for correlation matrices or 2D data.
 
 **Additional Options:**
 - `labels`: Array of variable names
@@ -2867,21 +1695,24 @@ Creates a heatmap for a correlation matrix.
 **Example:**
 ```javascript
 const corrMatrix = [
-  [1.0, 0.8, 0.3],
-  [0.8, 1.0, 0.5],
-  [0.3, 0.5, 1.0]
+  [1.0, 0.8, 0.3, 0.1],
+  [0.8, 1.0, 0.5, 0.2],
+  [0.3, 0.5, 1.0, 0.7],
+  [0.1, 0.2, 0.7, 1.0]
 ];
 
 datly.plotHeatmap(corrMatrix, {
-  labels: ['Var1', 'Var2', 'Var3'],
+  labels: ['Age', 'Income', 'Education', 'Experience'],
   showValues: true,
-  title: 'Correlation Matrix'
-}, '#chart');
+  title: 'Correlation Matrix',
+  width: 500,
+  height: 500
+}, '#heatmap');
 ```
 
 ### `plotViolin(data, options = {}, selector)`
 
-Creates violin plots showing distribution density.
+Creates violin plots showing distribution density for multiple groups.
 
 **Parameters:**
 - `data`: Array of arrays or single array
@@ -2890,46 +1721,57 @@ Creates violin plots showing distribution density.
 
 **Example:**
 ```javascript
-const group1 = [1, 2, 2, 3, 3, 3, 4, 4, 5];
-const group2 = [2, 3, 3, 4, 4, 4, 5, 5, 6];
+const before = [5.1, 5.3, 4.9, 5.2, 5.0, 4.8, 5.1, 5.4];
+const after = [5.8, 6.1, 5.9, 6.2, 6.0, 5.7, 6.0, 6.3];
 
-datly.plotViolin([group1, group2], {
-  labels: ['Before', 'After'],
-  title: 'Distribution Comparison'
-}, '#chart');
+datly.plotViolin([before, after], {
+  labels: ['Before Treatment', 'After Treatment'],
+  title: 'Treatment Effect Distribution',
+  ylabel: 'Measurement',
+  width: 600,
+  height: 400
+}, '#violin-plot');
 ```
 
 ### `plotDensity(array, options = {}, selector)`
 
-Creates a kernel density plot.
+Creates a kernel density plot showing the probability density function.
 
 **Additional Options:**
 - `bandwidth`: Smoothing bandwidth (default: 5)
 
 **Example:**
 ```javascript
-const data = [1, 2, 2, 3, 3, 3, 4, 4, 5];
+const data = [1, 2, 2, 3, 3, 3, 4, 4, 5, 5, 5, 5, 6, 6, 7];
 datly.plotDensity(data, {
   bandwidth: 0.5,
-  title: 'Density Plot'
-}, '#chart');
+  title: 'Data Distribution (Kernel Density)',
+  xlabel: 'Values',
+  ylabel: 'Density',
+  width: 600,
+  height: 400
+}, '#density-plot');
 ```
 
 ### `plotQQ(array, options = {}, selector)`
 
-Creates a Q-Q plot for normality assessment.
+Creates a Q-Q plot for assessing normality of data.
 
 **Example:**
 ```javascript
-const data = [1.2, 2.3, 1.8, 2.1, 1.9, 2.0, 2.4];
+const data = [1.2, 2.3, 1.8, 2.1, 1.9, 2.0, 2.4, 1.7, 2.2, 1.6];
 datly.plotQQ(data, {
-  title: 'Q-Q Plot'
-}, '#chart');
+  title: 'Q-Q Plot for Normality Check',
+  xlabel: 'Theoretical Quantiles',
+  ylabel: 'Sample Quantiles',
+  width: 500,
+  height: 500
+}, '#qq-plot');
 ```
 
 ### `plotParallel(data, columns, options = {}, selector)`
 
-Creates a parallel coordinates plot.
+Creates a parallel coordinates plot for multivariate data visualization.
 
 **Parameters:**
 - `data`: Array of objects
@@ -2939,20 +1781,23 @@ Creates a parallel coordinates plot.
 
 **Example:**
 ```javascript
-const data = [
-  { age: 25, salary: 50000, experience: 2 },
-  { age: 30, salary: 60000, experience: 5 },
-  { age: 35, salary: 70000, experience: 8 }
+const employees = [
+  { age: 25, salary: 50000, experience: 2, satisfaction: 7 },
+  { age: 30, salary: 60000, experience: 5, satisfaction: 8 },
+  { age: 35, salary: 70000, experience: 8, satisfaction: 6 },
+  { age: 40, salary: 80000, experience: 12, satisfaction: 9 }
 ];
 
-datly.plotParallel(data, ['age', 'salary', 'experience'], {
-  title: 'Parallel Coordinates'
-}, '#chart');
+datly.plotParallel(employees, ['age', 'salary', 'experience', 'satisfaction'], {
+  title: 'Employee Profile Analysis',
+  width: 800,
+  height: 400
+}, '#parallel-plot');
 ```
 
 ### `plotPairplot(data, columns, options = {}, selector)`
 
-Creates a pairplot matrix showing all pairwise relationships.
+Creates a pairplot matrix showing all pairwise relationships between variables.
 
 **Parameters:**
 - `data`: Array of objects
@@ -2963,20 +1808,22 @@ Creates a pairplot matrix showing all pairwise relationships.
 
 **Example:**
 ```javascript
-const data = [
-  { age: 25, salary: 50000, experience: 2 },
-  { age: 30, salary: 60000, experience: 5 },
-  { age: 35, salary: 70000, experience: 8 }
+const iris = [
+  { sepal_length: 5.1, sepal_width: 3.5, petal_length: 1.4, petal_width: 0.2 },
+  { sepal_length: 4.9, sepal_width: 3.0, petal_length: 1.4, petal_width: 0.2 },
+  { sepal_length: 7.0, sepal_width: 3.2, petal_length: 4.7, petal_width: 1.4 },
+  { sepal_length: 6.4, sepal_width: 3.2, petal_length: 4.5, petal_width: 1.5 }
 ];
 
-datly.plotPairplot(data, ['age', 'salary', 'experience'], {
-  size: 150
-}, '#chart');
+datly.plotPairplot(iris, ['sepal_length', 'sepal_width', 'petal_length', 'petal_width'], {
+  size: 150,
+  color: '#E91E63'
+}, '#pairplot');
 ```
 
 ### `plotMultiline(series, options = {}, selector)`
 
-Creates a multi-line chart for comparing time series.
+Creates a multi-line chart for comparing multiple time series.
 
 **Parameters:**
 - `series`: Array of objects with `name` and `data` properties
@@ -2986,52 +1833,87 @@ Creates a multi-line chart for comparing time series.
 
 **Example:**
 ```javascript
-const series = [
+const timeSeries = [
   {
-    name: 'Series A',
-    data: [{x: 1, y: 10}, {x: 2, y: 20}, {x: 3, y: 15}]
+    name: 'Product A',
+    data: [{x: 1, y: 10}, {x: 2, y: 15}, {x: 3, y: 12}, {x: 4, y: 18}]
   },
   {
-    name: 'Series B',
-    data: [{x: 1, y: 15}, {x: 2, y: 25}, {x: 3, y: 20}]
+    name: 'Product B',
+    data: [{x: 1, y: 8}, {x: 2, y: 12}, {x: 3, y: 16}, {x: 4, y: 14}]
+  },
+  {
+    name: 'Product C',
+    data: [{x: 1, y: 12}, {x: 2, y: 9}, {x: 3, y: 14}, {x: 4, y: 16}]
   }
 ];
 
-datly.plotMultiline(series, {
+datly.plotMultiline(timeSeries, {
   legend: true,
-  title: 'Comparison'
-}, '#chart');
+  title: 'Product Sales Comparison',
+  xlabel: 'Quarter',
+  ylabel: 'Sales (Units)',
+  width: 700,
+  height: 400
+}, '#multiline-chart');
 ```
 
 ---
 
 ## Complete Example Workflow
 
-Here's a complete example demonstrating a typical data analysis workflow:
+Here's a comprehensive example demonstrating a typical data analysis workflow using datly:
 
 ```javascript
 // 1. Load and explore data
-const data = [
-  { age: 25, salary: 50000, experience: 2, department: 'IT' },
-  { age: 30, salary: 60000, experience: 5, department: 'HR' },
-  { age: 35, salary: 70000, experience: 8, department: 'IT' },
-  // ... more data
+const employeeData = [
+  { age: 25, salary: 50000, experience: 2, department: 'IT', performance: 85 },
+  { age: 30, salary: 60000, experience: 5, department: 'HR', performance: 90 },
+  { age: 35, salary: 70000, experience: 8, department: 'IT', performance: 88 },
+  { age: 28, salary: 55000, experience: 3, department: 'Sales', performance: 82 },
+  { age: 42, salary: 85000, experience: 15, department: 'IT', performance: 95 },
+  { age: 31, salary: 62000, experience: 6, department: 'HR', performance: 87 },
+  { age: 26, salary: 48000, experience: 1, department: 'Sales', performance: 78 },
+  { age: 38, salary: 75000, experience: 12, department: 'IT', performance: 92 }
 ];
 
-// 2. Perform EDA
-const overview = datly.eda_overview(data);
-console.log(overview);
+// 2. Perform exploratory data analysis
+const overview = datly.eda_overview(employeeData);
+console.log('Dataset Overview:', overview);
 
-// 3. Check correlations
-const correlations = datly.df_corr(data, 'pearson');
-console.log(correlations);
+// 3. Calculate descriptive statistics for salary
+const salaries = employeeData.map(emp => emp.salary);
+const salaryStats = datly.describe(salaries);
+console.log('Salary Statistics:', salaryStats);
 
-// 4. Prepare features and target
-const X = data.map(d => [d.age, d.experience]);
-const y = data.map(d => d.salary);
+// 4. Check correlations between numeric variables
+const correlations = datly.df_corr(employeeData, 'pearson');
+console.log('Correlation Matrix:', correlations);
 
-// 5. Split data
-const split = datly.train_test_split(X, y, 0.2, 42);
+// 5. Visualize salary distribution
+datly.plotHistogram(salaries, {
+  title: 'Salary Distribution',
+  xlabel: 'Salary ($)',
+  ylabel: 'Frequency',
+  bins: 6,
+  color: '#2196F3'
+}, '#salary-histogram');
+
+// 6. Analyze relationship between experience and salary
+const experience = employeeData.map(emp => emp.experience);
+datly.plotScatter(experience, salaries, {
+  title: 'Experience vs Salary',
+  xlabel: 'Years of Experience',
+  ylabel: 'Salary ($)',
+  color: '#4CAF50'
+}, '#experience-salary-scatter');
+
+// 7. Prepare data for machine learning
+const X = employeeData.map(emp => [emp.age, emp.experience]);
+const y = salaries;
+
+// 8. Split data into training and testing sets
+const split = datly.train_test_split(X, y, 0.3, 42);
 const trainIndices = split.indices.train;
 const testIndices = split.indices.test;
 
@@ -3040,49 +1922,122 @@ const y_train = trainIndices.map(i => y[i]);
 const X_test = testIndices.map(i => X[i]);
 const y_test = testIndices.map(i => y[i]);
 
-// 6. Scale features
+// 9. Scale features for better model performance
 const scaler = datly.standard_scaler_fit(X_train);
 const X_train_scaled = datly.standard_scaler_transform(scaler, X_train);
 const X_test_scaled = datly.standard_scaler_transform(scaler, X_test);
 
-// 7. Train model
-const model = datly.train_linear_regression(
-  JSON.parse(X_train_scaled).preview,
-  y_train
+// 10. Train linear regression model
+const model = datly.train_linear_regression(X_train_scaled.data, y_train);
+console.log('Linear Regression Model:', model);
+
+// 11. Make predictions
+const predictions = datly.predict_linear(model, X_test_scaled.data);
+console.log('Predictions:', predictions);
+
+// 12. Evaluate model performance
+const metrics = datly.metrics_regression(y_test, predictions.predictions);
+console.log('Model Performance:', metrics);
+
+// 13. Visualize actual vs predicted values
+datly.plotScatter(y_test, predictions.predictions, {
+  title: 'Actual vs Predicted Salaries',
+  xlabel: 'Actual Salary ($)',
+  ylabel: 'Predicted Salary ($)',
+  color: '#FF5722'
+}, '#prediction-scatter');
+
+// 14. Compare salary distributions by department
+const departments = ['IT', 'HR', 'Sales'];
+const deptSalaries = departments.map(dept =>
+  employeeData.filter(emp => emp.department === dept).map(emp => emp.salary)
 );
 
-// 8. Make predictions
-const predictions = datly.predict_linear(
-  model,
-  JSON.parse(X_test_scaled).preview
-);
+datly.plotBoxplot(deptSalaries, {
+  labels: departments,
+  title: 'Salary Distribution by Department',
+  ylabel: 'Salary ($)',
+  width: 600,
+  height: 400
+}, '#department-boxplot');
 
-// 9. Evaluate model
-const metrics = datly.metrics_regression(
-  y_test,
-  JSON.parse(predictions).predictions
-);
-console.log(metrics);
+// 15. Perform clustering analysis
+const clusterData = employeeData.map(emp => [emp.age, emp.salary / 1000]); // Normalize salary
+const clusterResult = datly.kmeans(clusterData, 3, { seed: 42 });
+console.log('Clustering Results:', clusterResult);
 
-// 10. Visualize results
-datly.plotScatter(y_test, JSON.parse(predictions).predictions, {
-  title: 'Actual vs Predicted',
-  xlabel: 'Actual',
-  ylabel: 'Predicted'
-}, '#results');
+// 16. Test for salary differences between departments
+const itSalaries = employeeData.filter(emp => emp.department === 'IT').map(emp => emp.salary);
+const hrSalaries = employeeData.filter(emp => emp.department === 'HR').map(emp => emp.salary);
+const salesSalaries = employeeData.filter(emp => emp.department === 'Sales').map(emp => emp.salary);
+
+const anovaResult = datly.anova_oneway([itSalaries, hrSalaries, salesSalaries]);
+console.log('ANOVA Test (Salary by Department):', anovaResult);
+
+// 17. Create comprehensive visualization dashboard
+// Correlation heatmap
+const numericData = employeeData.map(emp => [emp.age, emp.salary / 1000, emp.experience, emp.performance]);
+const corrMatrix = [
+  [1.0, 0.75, 0.95, 0.62],
+  [0.75, 1.0, 0.68, 0.43],
+  [0.95, 0.68, 1.0, 0.71],
+  [0.62, 0.43, 0.71, 1.0]
+];
+
+datly.plotHeatmap(corrMatrix, {
+  labels: ['Age', 'Salary (k)', 'Experience', 'Performance'],
+  title: 'Employee Metrics Correlation',
+  showValues: true
+}, '#correlation-heatmap');
 ```
 
 ---
 
 ## Tips and Best Practices
 
-1. **Data Preparation**: Always check for missing values and outliers before analysis
-2. **Feature Scaling**: Scale features before training distance-based models (KNN, SVM)
-3. **Cross-Validation**: Use cross-validation to assess model performance reliably
+1. **Data Preparation**: Always check for missing values and outliers before analysis using `missing_values()` and `outliers_zscore()`
+2. **Feature Scaling**: Scale features before training distance-based models (KNN) or neural networks using `standard_scaler_fit()` and `standard_scaler_transform()`
+3. **Cross-Validation**: Use `train_test_split()` to assess model performance on unseen data
 4. **Model Selection**: Start with simple models (linear regression) before trying complex ones
-5. **Hyperparameter Tuning**: Experiment with different hyperparameters (k in KNN, max_depth in trees)
-6. **Visualization**: Always visualize your data and results to gain insights
-7. **Statistical Tests**: Check assumptions (normality, homogeneity) before parametric tests
+5. **Hyperparameter Tuning**: Experiment with different parameters (k in KNN, max_depth in trees)
+6. **Visualization**: Always visualize your data and results using the plotting functions to gain insights
+7. **Statistical Tests**: Check assumptions (normality using `shapiro_wilk()`) before parametric tests
+8. **Object Access**: Results are returned as JavaScript objects - access properties directly (e.g., `result.value`, `result.p_value`)
+
+---
+
+## API Reference Summary
+
+### Statistics Functions
+- `mean(array)`, `median(array)`, `variance(array)`, `std(array)`
+- `skewness(array)`, `kurtosis(array)`, `percentile(array, p)`
+- `describe(array)` - comprehensive statistics
+
+### Dataframe Operations
+- `df_from_csv()`, `df_from_json()`, `df_from_array()`, `df_from_object()`
+- `df_get_column()`, `df_get_value()`, `df_get_columns()`
+- `df_head()`, `df_tail()`, `df_corr()`
+
+### Machine Learning
+- `train_linear_regression()`, `predict_linear()`
+- `train_logistic_regression()`, `predict_logistic()`
+- `train_knn()`, `predict_knn()`
+- `train_decision_tree()`, `train_random_forest()`
+- `train_naive_bayes()`, `kmeans()`
+
+### Statistical Tests
+- `ttest_1samp()`, `ttest_ind()`, `anova_oneway()`
+- `shapiro_wilk()`, `correlation()`
+
+### Utilities
+- `train_test_split()`, `standard_scaler_fit()`, `standard_scaler_transform()`
+- `metrics_classification()`, `metrics_regression()`
+- `eda_overview()`, `missing_values()`, `outliers_zscore()`
+
+### Visualization
+- `plotHistogram()`, `plotScatter()`, `plotLine()`, `plotBar()`
+- `plotBoxplot()`, `plotPie()`, `plotHeatmap()`, `plotViolin()`
+- `plotDensity()`, `plotQQ()`, `plotParallel()`, `plotPairplot()`, `plotMultiline()`
 
 ---
 
@@ -3094,4 +2049,4 @@ This documentation is provided as-is. Please refer to the library's official rep
 
 ## Support
 
-For issues, questions, or contributions, please visit the official Datly.js repository.
+For issues, questions, or contributions, please visit the official datly repository.

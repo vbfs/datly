@@ -1,6 +1,6 @@
 {
   "name": "datly",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "A JavaScript toolkit for data science, statistics, and machine learning in the browser or Node.js.",
   "keywords": [
     "data-science",
