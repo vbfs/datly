@@ -22,9 +22,19 @@ const _build_df = (columns, data) => ({
 
 const _empty_df = () => _build_df([], []);
 
-const _uniq = (arr) => [...new Set(arr)];
+const _uniq = (arr) => Array.from(new Set(arr));
 
-const _flattenArray = (arr) => arr.flat();
+const _flattenArray = (arr) => {
+  const result = [];
+  for (let i = 0; i < arr.length; i++) {
+    if (Array.isArray(arr[i])) {
+      result.push(...arr[i]);
+    } else {
+      result.push(arr[i]);
+    }
+  }
+  return result;
+};
 
 const _text = (obj) => obj;
 
