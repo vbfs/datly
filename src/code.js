@@ -24,6 +24,8 @@ const _empty_df = () => _build_df([], []);
 
 const _uniq = (arr) => [...new Set(arr)];
 
+const _flattenArray = (arr) => arr.flat();
+
 const _text = (obj) => obj;
 
 const _flatten = (obj, prefix = "", maxDepth = 5, currentDepth = 0) => {
@@ -385,7 +387,7 @@ const _err = (type, message) => _text({ type, error: message });
 const df_missing_report = (rows) => {
   if (!Array.isArray(rows) || !rows.length)
     return _err("missing_report", "empty data");
-  const cols = _uniq(_flatten(rows.map((r) => Object.keys(r))));
+  const cols = _uniq(_flattenArray(rows.map((r) => Object.keys(r))));
   const res = cols.map((c) => {
     const col = rows.map((r) => r[c]);
     const miss = col.filter((v) => v == null || v === "").length;
@@ -395,7 +397,7 @@ const df_missing_report = (rows) => {
 };
 
 const df_corr = (rows, method = "pearson") => {
-  const cols = _uniq(_flatten(rows.map((r) => Object.keys(r))));
+  const cols = _uniq(_flattenArray(rows.map((r) => Object.keys(r))));
   const numericCols = cols.filter((c) =>
     rows.every((r) => Number.isFinite(_toNum(r[c])) || r[c] == null)
   );
@@ -1115,7 +1117,7 @@ const levene_test = (groups) => {
   const zs = groups.map((g, i) =>
     _numeric(g).map((v) => Math.abs(v - medians[i]))
   );
-  const allz = _flatten(zs);
+  const allz = _flattenArray(zs);
   const overall_median = _median(allz);
   const ns = zs.map((z) => z.length);
   const N = ns.reduce((a, b) => a + b, 0);
@@ -1143,7 +1145,7 @@ const levene_test = (groups) => {
 };
 
 const kruskal_wallis = (groups) => {
-  const all = _flatten(groups);
+  const all = _flattenArray(groups);
   const n = all.length;
   const ranks = _rank(all);
   let pos = 0;
