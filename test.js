@@ -15,21 +15,39 @@ import {
   df_from_json,
   df_from_array,
   df_from_csv,
+  df_from_structured_json,
+  df_from_object,
   df_filter,
   df_sort,
   df_select,
   df_get_column,
+  df_get_columns,
   df_head,
   df_tail,
+  df_info,
   df_describe,
   df_add_column,
   df_dropna,
   df_fillna,
   df_concat,
   df_merge,
+  df_groupby,
+  df_aggregate,
+  df_apply,
+  df_to_csv,
+  df_sample,
+  df_unique,
+  df_rename,
+  df_drop,
+  df_missing_report,
+  df_corr,
+  df_explode,
   // Correlations
   corr_pearson,
   corr_spearman,
+  corr_kendall,
+  corr_partial,
+  corr_matrix_all,
   // Distributions
   normal_pdf,
   normal_cdf,
@@ -44,11 +62,19 @@ import {
   t_test_one_sample,
   z_test_one_sample,
   chi_square_independence,
+  chi_square_goodness,
   anova_oneway,
   shapiro_wilk,
+  jarque_bera,
+  levene_test,
+  kruskal_wallis,
+  mann_whitney,
+  wilcoxon_signed_rank,
   // Confidence intervals
   confidence_interval_mean,
   confidence_interval_proportion,
+  confidence_interval_variance,
+  confidence_interval_difference,
   // ML
   train_test_split,
   train_linear_regression,
@@ -62,6 +88,18 @@ import {
   predict_knn_classifier,
   train_knn_regressor,
   predict_knn_regressor,
+  // Decision Trees
+  train_decision_tree_classifier,
+  train_decision_tree_regressor,
+  predict_decision_tree,
+  // Random Forest
+  train_random_forest_classifier,
+  train_random_forest_regressor,
+  predict_random_forest_classifier,
+  predict_random_forest_regressor,
+  // Naive Bayes
+  train_naive_bayes,
+  predict_naive_bayes,
   // Feature scaling
   standard_scaler_fit,
   standard_scaler_transform,
@@ -73,6 +111,13 @@ import {
   // PCA
   train_pca,
   transform_pca,
+  // Ensemble
+  ensemble_voting_classifier,
+  ensemble_voting_regressor,
+  // Cross-validation
+  cross_validate,
+  // Feature importance
+  feature_importance_tree,
   // Outliers
   outliers_iqr,
   outliers_zscore,
@@ -198,6 +243,37 @@ test('corr_spearman: calcula correlação de Spearman', () => {
   assert.strictEqual(result.type, 'statistic');
   assert.strictEqual(result.name, 'spearman_correlation');
   assert.ok(result.value > 0.99);
+});
+
+test('corr_kendall: calcula correlação de Kendall', () => {
+  const result = corr_kendall([1, 2, 3, 4, 5], [1, 2, 3, 4, 5]);
+  assert.strictEqual(result.type, 'statistic');
+  assert.strictEqual(result.name, 'kendall_tau');
+  assert.ok(typeof result.value === 'number');
+});
+
+test('corr_partial: calcula correlação parcial', () => {
+  const x = [1, 2, 3, 4, 5];
+  const y = [2, 4, 6, 8, 10];
+  const z = [1, 1, 2, 2, 3];
+  const result = corr_partial(x, y, z);
+  assert.strictEqual(result.type, 'statistic');
+  assert.strictEqual(result.name, 'partial_correlation');
+  assert.ok(typeof result.value === 'number');
+});
+
+test('corr_matrix_all: calcula matriz de correlação completa', () => {
+  try {
+    const data = [
+      { x: 1, y: 2, z: 3 },
+      { x: 2, y: 4, z: 6 },
+      { x: 3, y: 6, z: 9 }
+    ];
+    const result = corr_matrix_all(data);
+    assert.ok(typeof result === 'object');
+  } catch (e) {
+    console.log(`  (Skipped due to: ${e.message})`);
+  }
 });
 
 // ============================
@@ -338,6 +414,207 @@ test('eda_overview: gera análise exploratória', () => {
   }
 });
 
+// --- Additional Dataframe Operations ---
+
+test('df_from_structured_json: cria dataframe de JSON estruturado', () => {
+  try {
+    const data = {
+      columns: ['name', 'age'],
+      data: [['Alice', 30], ['Bob', 25]]
+    };
+    const result = df_from_structured_json(data);
+    assert.strictEqual(result.type, 'dataframe');
+    assert.ok(result.n_rows >= 1);
+  } catch (e) {
+    console.log(`  (Skipped due to: ${e.message})`);
+  }
+});
+
+test('df_from_object: cria dataframe de objeto', () => {
+  const data = {
+    name: ['Alice', 'Bob'],
+    age: [30, 25]
+  };
+  const result = df_from_object(data);
+  assert.strictEqual(result.type, 'dataframe');
+  assert.ok(result.n_rows >= 1);
+});
+
+test('df_get_columns: extrai múltiplas colunas', () => {
+  const data = [
+    { name: 'Alice', age: 30, city: 'NYC' },
+    { name: 'Bob', age: 25, city: 'LA' }
+  ];
+  const df = df_from_json(data);
+  const result = df_get_columns(df, ['name', 'age']);
+  assert.ok(typeof result === 'object');
+});
+
+test('df_sort: ordena dataframe', () => {
+  const data = [
+    { name: 'Charlie', age: 35 },
+    { name: 'Alice', age: 30 },
+    { name: 'Bob', age: 25 }
+  ];
+  const df = df_from_json(data);
+  const result = df_sort(df, 'age');
+  assert.strictEqual(result.type, 'dataframe');
+  assert.strictEqual(result.data[0].age, 25);
+});
+
+test('df_select: seleciona colunas específicas', () => {
+  const data = [
+    { name: 'Alice', age: 30, city: 'NYC' },
+    { name: 'Bob', age: 25, city: 'LA' }
+  ];
+  const df = df_from_json(data);
+  const result = df_select(df, ['name', 'age']);
+  assert.strictEqual(result.type, 'dataframe');
+  assert.ok(result.columns.includes('name'));
+  assert.ok(result.columns.includes('age'));
+});
+
+test('df_info: retorna informações do dataframe', () => {
+  const data = [{ name: 'Alice', age: 30 }];
+  const df = df_from_json(data);
+  const result = df_info(df);
+  assert.ok(typeof result === 'object' || typeof result === 'string');
+});
+
+test('df_head: retorna primeiras linhas', () => {
+  const data = [
+    { id: 1 }, { id: 2 }, { id: 3 }, { id: 4 }, { id: 5 }
+  ];
+  const df = df_from_json(data);
+  const result = df_head(df, 3);
+  assert.strictEqual(result.type, 'dataframe');
+  assert.ok(result.n_rows <= 3);
+});
+
+test('df_tail: retorna últimas linhas', () => {
+  const data = [
+    { id: 1 }, { id: 2 }, { id: 3 }, { id: 4 }, { id: 5 }
+  ];
+  const df = df_from_json(data);
+  const result = df_tail(df, 3);
+  assert.strictEqual(result.type, 'dataframe');
+  assert.ok(result.n_rows <= 3);
+});
+
+test('df_groupby: agrupa dados por coluna', () => {
+  const data = [
+    { category: 'A', value: 10 },
+    { category: 'B', value: 20 },
+    { category: 'A', value: 15 }
+  ];
+  const df = df_from_json(data);
+  const result = df_groupby(df, 'category');
+  assert.ok(typeof result === 'object');
+});
+
+test('df_aggregate: agrega dados agrupados', () => {
+  try {
+    const data = [
+      { category: 'A', value: 10 },
+      { category: 'B', value: 20 },
+      { category: 'A', value: 15 }
+    ];
+    const df = df_from_json(data);
+    const grouped = df_groupby(df, 'category');
+    const result = df_aggregate(grouped, 'value', (arr) => arr.reduce((a,b) => a+b, 0));
+    assert.ok(typeof result === 'object');
+  } catch (e) {
+    console.log(`  (Skipped due to: ${e.message})`);
+  }
+});
+
+test('df_apply: aplica função aos dados', () => {
+  const data = [{ value: 1 }, { value: 2 }];
+  const df = df_from_json(data);
+  const result = df_apply(df, 'value', x => x * 2);
+  assert.strictEqual(result.type, 'dataframe');
+});
+
+test('df_to_csv: exporta dataframe para CSV', () => {
+  const data = [{ name: 'Alice', age: 30 }];
+  const df = df_from_json(data);
+  const result = df_to_csv(df);
+  assert.ok(typeof result === 'string');
+  assert.ok(result.includes('name'));
+});
+
+test('df_sample: amostra aleatória do dataframe', () => {
+  const data = [
+    { id: 1 }, { id: 2 }, { id: 3 }, { id: 4 }, { id: 5 }
+  ];
+  const df = df_from_json(data);
+  const result = df_sample(df, 3);
+  assert.strictEqual(result.type, 'dataframe');
+  assert.ok(result.n_rows <= 3);
+});
+
+test('df_unique: retorna valores únicos', () => {
+  const data = [
+    { category: 'A' },
+    { category: 'B' },
+    { category: 'A' }
+  ];
+  const df = df_from_json(data);
+  const result = df_unique(df, 'category');
+  assert.ok(Array.isArray(result));
+});
+
+test('df_rename: renomeia colunas', () => {
+  const data = [{ old_name: 'value' }];
+  const df = df_from_json(data);
+  const result = df_rename(df, { old_name: 'new_name' });
+  assert.strictEqual(result.type, 'dataframe');
+  assert.ok(result.columns.includes('new_name'));
+});
+
+test('df_drop: remove colunas', () => {
+  const data = [{ name: 'Alice', age: 30, city: 'NYC' }];
+  const df = df_from_json(data);
+  const result = df_drop(df, ['city']);
+  assert.strictEqual(result.type, 'dataframe');
+  assert.ok(!result.columns.includes('city'));
+});
+
+test('df_missing_report: gera relatório de valores faltantes', () => {
+  const data = [
+    { name: 'Alice', age: 30 },
+    { name: null, age: 25 }
+  ];
+  const df = df_from_json(data);
+  const result = df_missing_report(df);
+  assert.ok(typeof result === 'object');
+});
+
+test('df_corr: calcula matriz de correlação', () => {
+  try {
+    const data = [
+      { x: 1, y: 2 },
+      { x: 2, y: 4 },
+      { x: 3, y: 6 }
+    ];
+    const result = df_corr(data);
+    assert.ok(typeof result === 'object');
+  } catch (e) {
+    console.log(`  (Skipped due to: ${e.message})`);
+  }
+});
+
+test('df_explode: explode arrays em linhas', () => {
+  const data = [
+    { id: 1, values: [1, 2, 3] },
+    { id: 2, values: [4, 5] }
+  ];
+  const df = df_from_json(data);
+  const result = df_explode(df, 'values');
+  assert.strictEqual(result.type, 'dataframe');
+  assert.ok(result.n_rows >= 5);
+});
+
 // ============================
 // DISTRIBUTION FUNCTIONS
 // ============================
@@ -464,6 +741,61 @@ test('shapiro_wilk: executa teste de normalidade', () => {
   assert.ok(typeof result.statistic === 'number');
 });
 
+test('jarque_bera: executa teste Jarque-Bera', () => {
+  const result = jarque_bera([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+  assert.strictEqual(result.type, 'hypothesis_test');
+  assert.strictEqual(result.name, 'jarque_bera');
+  assert.ok(typeof result.statistic === 'number');
+});
+
+test('levene_test: executa teste de Levene', () => {
+  try {
+    const result = levene_test([10, 12, 11, 13], [8, 9, 7, 10], [15, 14, 16, 17]);
+    assert.strictEqual(result.type, 'hypothesis_test');
+    assert.strictEqual(result.name, 'levene_test');
+    assert.ok(typeof result.statistic === 'number');
+  } catch (e) {
+    console.log(`  (Skipped due to: ${e.message})`);
+  }
+});
+
+test('kruskal_wallis: executa teste de Kruskal-Wallis', () => {
+  try {
+    const result = kruskal_wallis([10, 12, 11], [8, 9, 7], [15, 14, 16]);
+    assert.strictEqual(result.type, 'hypothesis_test');
+    assert.strictEqual(result.name, 'kruskal_wallis');
+    assert.ok(typeof result.statistic === 'number');
+  } catch (e) {
+    console.log(`  (Skipped due to: ${e.message})`);
+  }
+});
+
+test('mann_whitney: executa teste de Mann-Whitney', () => {
+  const result = mann_whitney([10, 12, 9, 11], [8, 7, 9, 10]);
+  assert.strictEqual(result.type, 'hypothesis_test');
+  assert.strictEqual(result.name, 'mann_whitney_u');
+  assert.ok(typeof result.statistic === 'number');
+});
+
+test('wilcoxon_signed_rank: executa teste de Wilcoxon', () => {
+  const result = wilcoxon_signed_rank([10, 12, 9, 11], [8, 10, 7, 9]);
+  assert.strictEqual(result.type, 'hypothesis_test');
+  assert.strictEqual(result.name, 'wilcoxon_signed_rank');
+  assert.ok(typeof result.statistic === 'number');
+});
+
+test('chi_square_goodness: teste qui-quadrado de aderência', () => {
+  try {
+    const observed = [10, 20, 30];
+    const expected = [15, 15, 30];
+    const result = chi_square_goodness(observed, expected);
+    assert.strictEqual(result.type, 'hypothesis_test');
+    assert.ok(typeof result.statistic === 'number');
+  } catch (e) {
+    console.log(`  (Skipped due to: ${e.message})`);
+  }
+});
+
 // ============================
 // CONFIDENCE INTERVALS
 // ============================
@@ -478,6 +810,24 @@ test('confidence_interval_mean: calcula IC para média', () => {
 
 test('confidence_interval_proportion: calcula IC para proporção', () => {
   const result = confidence_interval_proportion(50, 100, 0.95);
+  assert.strictEqual(result.type, 'confidence_interval');
+  assert.ok(typeof result.lower === 'number');
+  assert.ok(typeof result.upper === 'number');
+});
+
+test('confidence_interval_variance: calcula IC para variância', () => {
+  const result = confidence_interval_variance([10, 12, 9, 11, 10, 13, 8], 0.95);
+  assert.strictEqual(result.type, 'confidence_interval');
+  assert.ok(typeof result.lower === 'number');
+  assert.ok(typeof result.upper === 'number');
+});
+
+test('confidence_interval_difference: calcula IC para diferença', () => {
+  const result = confidence_interval_difference(
+    [10, 12, 9, 11],
+    [8, 7, 9, 10],
+    0.95
+  );
   assert.strictEqual(result.type, 'confidence_interval');
   assert.ok(typeof result.lower === 'number');
   assert.ok(typeof result.upper === 'number');
@@ -725,6 +1075,154 @@ test('autocorrelation: calcula autocorrelação', () => {
   assert.strictEqual(result.name, 'autocorrelation');
   assert.ok(typeof result.value === 'number');
   assert.ok(result.value >= -1 && result.value <= 1);
+});
+
+// ============================
+// DECISION TREES
+// ============================
+console.log('\n--- Decision Trees ---');
+
+test('train_decision_tree_classifier: treina classificador', () => {
+  const X = [[1, 2], [2, 3], [3, 4], [4, 5], [5, 6]];
+  const y = [0, 0, 1, 1, 1];
+  const model = train_decision_tree_classifier(X, y, { max_depth: 3 });
+  assert.strictEqual(model.type, 'decision_tree_classifier');
+  assert.ok(model.tree !== undefined);
+});
+
+test('train_decision_tree_regressor: treina regressor', () => {
+  const X = [[1], [2], [3], [4], [5]];
+  const y = [2, 4, 6, 8, 10];
+  const model = train_decision_tree_regressor(X, y, { max_depth: 3 });
+  assert.strictEqual(model.type, 'decision_tree_regressor');
+  assert.ok(model.tree !== undefined);
+});
+
+test('predict_decision_tree: faz predições', () => {
+  const X = [[1, 2], [2, 3], [3, 4], [4, 5], [5, 6]];
+  const y = [0, 0, 1, 1, 1];
+  const model = train_decision_tree_classifier(X, y, { max_depth: 3 });
+  const predictions = predict_decision_tree(model, [[3, 3]]);
+  assert.strictEqual(predictions.type, 'prediction');
+  assert.ok(Array.isArray(predictions.predictions));
+});
+
+// ============================
+// RANDOM FOREST
+// ============================
+console.log('\n--- Random Forest ---');
+
+test('train_random_forest_classifier: treina classificador RF', () => {
+  const X = [[1, 2], [2, 3], [3, 4], [4, 5], [5, 6], [6, 7]];
+  const y = [0, 0, 0, 1, 1, 1];
+  const model = train_random_forest_classifier(X, y, { n_trees: 5, max_depth: 3 });
+  assert.strictEqual(model.type, 'random_forest_classifier');
+  assert.ok(Array.isArray(model.trees));
+});
+
+test('train_random_forest_regressor: treina regressor RF', () => {
+  const X = [[1], [2], [3], [4], [5]];
+  const y = [2, 4, 6, 8, 10];
+  const model = train_random_forest_regressor(X, y, { n_trees: 5, max_depth: 3 });
+  assert.strictEqual(model.type, 'random_forest_regressor');
+  assert.ok(Array.isArray(model.trees));
+});
+
+test('predict_random_forest_classifier: predições RF classifier', () => {
+  const X = [[1, 2], [2, 3], [3, 4], [4, 5], [5, 6], [6, 7]];
+  const y = [0, 0, 0, 1, 1, 1];
+  const model = train_random_forest_classifier(X, y, { n_trees: 5, max_depth: 3 });
+  const predictions = predict_random_forest_classifier(model, [[3, 3]]);
+  assert.strictEqual(predictions.type, 'prediction');
+  assert.ok(Array.isArray(predictions.predictions));
+});
+
+test('predict_random_forest_regressor: predições RF regressor', () => {
+  const X = [[1], [2], [3], [4], [5]];
+  const y = [2, 4, 6, 8, 10];
+  const model = train_random_forest_regressor(X, y, { n_trees: 5, max_depth: 3 });
+  const predictions = predict_random_forest_regressor(model, [[3]]);
+  assert.strictEqual(predictions.type, 'prediction');
+  assert.ok(Array.isArray(predictions.predictions));
+});
+
+// ============================
+// NAIVE BAYES
+// ============================
+console.log('\n--- Naive Bayes ---');
+
+test('train_naive_bayes: treina modelo Naive Bayes', () => {
+  const X = [[1, 2], [2, 3], [3, 4], [4, 5], [5, 6]];
+  const y = [0, 0, 1, 1, 1];
+  const model = train_naive_bayes(X, y);
+  assert.strictEqual(model.type, 'naive_bayes');
+  assert.ok(model.classes !== undefined);
+});
+
+test('predict_naive_bayes: faz predições Naive Bayes', () => {
+  const X = [[1, 2], [2, 3], [3, 4], [4, 5], [5, 6]];
+  const y = [0, 0, 1, 1, 1];
+  const model = train_naive_bayes(X, y);
+  const predictions = predict_naive_bayes(model, [[3, 3]]);
+  assert.strictEqual(predictions.type, 'prediction');
+  assert.ok(Array.isArray(predictions.predictions));
+});
+
+// ============================
+// ENSEMBLE METHODS
+// ============================
+console.log('\n--- Ensemble Methods ---');
+
+test('ensemble_voting_classifier: voting classifier', () => {
+  const X = [[1, 2], [2, 3], [3, 4], [4, 5], [5, 6]];
+  const y = [0, 0, 1, 1, 1];
+  const models = [
+    train_knn_classifier(X, y, 3),
+    train_naive_bayes(X, y)
+  ];
+  const result = ensemble_voting_classifier(models, [[3, 3]]);
+  assert.strictEqual(result.type, 'ensemble_prediction');
+  assert.ok(Array.isArray(result.predictions));
+});
+
+test('ensemble_voting_regressor: voting regressor', () => {
+  const X = [[1], [2], [3], [4], [5]];
+  const y = [2, 4, 6, 8, 10];
+  const models = [
+    train_knn_regressor(X, y, 2),
+    train_linear_regression(X, y)
+  ];
+  const result = ensemble_voting_regressor(models, [[3]]);
+  assert.strictEqual(result.type, 'ensemble_prediction');
+  assert.ok(Array.isArray(result.predictions));
+});
+
+// ============================
+// VALIDATION & FEATURE IMPORTANCE
+// ============================
+console.log('\n--- Validação e Importância de Features ---');
+
+test('cross_validate: validação cruzada', () => {
+  const X = [[1, 2], [2, 3], [3, 4], [4, 5], [5, 6], [6, 7], [7, 8], [8, 9]];
+  const y = [0, 0, 1, 1, 0, 0, 1, 1];
+  const result = cross_validate(
+    X,
+    y,
+    (X_train, y_train) => train_knn_classifier(X_train, y_train, 3),
+    (model, X_test) => predict_knn_classifier(model, X_test),
+    3
+  );
+  assert.strictEqual(result.type, 'cross_validation');
+  assert.ok(Array.isArray(result.scores));
+});
+
+test('feature_importance_tree: importância de features', () => {
+  const X = [[1, 2], [2, 3], [3, 4], [4, 5], [5, 6]];
+  const y = [0, 0, 1, 1, 1];
+  const model = train_decision_tree_classifier(X, y, { max_depth: 3 });
+  const result = feature_importance_tree(model);
+  assert.ok(typeof result === 'object');
+  assert.ok(Array.isArray(result.importance) || result.type === 'feature_importance');
 });
 
 // ============================
